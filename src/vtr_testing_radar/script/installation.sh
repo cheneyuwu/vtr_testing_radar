@@ -1,6 +1,6 @@
 # Installation
 
-## Recommend to remove your current local vtr3 repo completely and re-clone it from github!
+## Recommend to backup and then remove your current local vtr3 repo completely, after that re-clone it from github!
 
 ## Follow the GitHub installation instructions: https://github.com/utiasASRL/vtr3/wiki/Installation-Guide
 ## with the following changes:

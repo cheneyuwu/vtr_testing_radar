@@ -1,0 +1,74 @@
+/**:
+  ros__parameters:
+    ############ system configuration ############
+    # Data logging
+    log_to_file: true
+    log_debug: true
+    log_enabled: [
+        ## ADD LOGGER IDS HERE
+        # tactic
+        # "tactic",
+        # "tactic.pipeline",
+        "tactic.module",
+        # "tactic.module.live_mem_manager",
+        # "tactic.module.graph_mem_manager",
+        # pose graph
+        # "pose_graph",
+        # pipeline specific
+        "radar.pipeline",
+        "radar.navtech_extractor",
+      ]
+
+    ############ tactic configuration ############
+    tactic:
+      task_queue_num_threads: 1
+      task_queue_size: -1
+
+      enable_parallelization: true
+      preprocessing_skippable: false
+      odometry_mapping_skippable: false
+      localization_skippable: false
+
+      localization_only_keyframe: false
+      default_loc_cov: [1.0, 0.5, 0.5, 0.25, 0.25, 0.5]
+
+      merge_threshold: [5.0, 3.0, 0.2]
+
+      extrapolate_odometry: true # path tracker
+
+      chain:
+        min_cusp_distance: 1.5
+        angle_weight: 7.0
+        search_depth: 5
+        search_back_depth: 10
+        distance_warning: 5.0
+
+      visualize: true
+      rviz_loc_path_offset: [0., 0., 0.]
+
+    ############ pipeline configuration ############
+    pipeline:
+      type: radar
+
+      preprocessing: [
+          # preprocessing thread modules
+          "conversion",
+        ]
+
+      # odometry: [
+      #     # odometry and mapping thread modules
+      #   ]
+
+      # localization: [
+      #     # localization thread modules
+      #   ]
+
+    preprocessing:
+      conversion:
+        type: radar.navtech_extractor
+
+        visualize: true
+
+    # odometry:
+
+    # localization:

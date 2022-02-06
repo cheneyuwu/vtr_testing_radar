@@ -2,8 +2,8 @@
 
 ## Recommend to remove your current local vtr3 repo completely and re-clone it from github!
 
-# Follow the GitHub installation instructions: https://github.com/utiasASRL/vtr3/wiki/Installation-Guide
-# with the following changes:
+## Follow the GitHub installation instructions: https://github.com/utiasASRL/vtr3/wiki/Installation-Guide
+## with the following changes:
 
 #   - after downloading the vtr3 repo, switch to `main_radar` branch before updating submodules
       cd ${VTRSRC}
@@ -32,3 +32,4 @@
       cd ~/ASRL/vtr_testing_radar  # go to where this repo is located
       colcon build --symlink-install
 
+## Now go to boreas_testing.sh in the same directory

@@ -1,3 +1,5 @@
+## Explain how to test radar pipeline
+
 ## First launch RViz for visualization
 source /opt/ros/galactic/setup.bash  # source the ROS environment
 ros2 run rviz2 rviz2 -d ${VTRSRC}/rviz/radar.rviz  # launch rviz
@@ -22,3 +24,10 @@ ros2 run vtr_testing_radar vtr_testing_radar_boreas_preprocessing  \
   --ros-args  -r __ns:=/vtr  --params-file ${VTRRROOT}/config/boreas.yaml \
   -p data_dir:=${VTRRRESULT}/${ODO_INPUT}/${ODO_INPUT} \
   -p odo_dir:=${VTRRDATA}/${ODO_INPUT}
+# Explanation:
+#   - this script will load all radar data in time order and feed it to the preprocessing pipeline, which will run the keypoint extraction module.
+#   - in the rviz window, change `Global Options -> Fixed Frame` to "radar", and look at the following:
+#      - raw scan: ROS Image of the raw radar scan (from cv::imread)
+#      - fft scan: output from load_radar function
+#      - raw point cloud: output from keypoint detector
+#     see if these visualization are expected

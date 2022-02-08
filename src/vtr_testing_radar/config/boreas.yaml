@@ -53,6 +53,7 @@
       preprocessing: [
           # preprocessing thread modules
           "conversion",
+          #,"filtering"
         ]
 
       # odometry: [
@@ -66,7 +67,19 @@
     preprocessing:
       conversion:
         type: radar.navtech_extractor
-
+        radar_resolution: 0.0438
+        detector: cen2018   # choose detector \in (kstrongest, cen2018, cacfar, oscfar)
+        minr: 2.0 # mininum detection distance
+        maxr: 80.0 # maximum detection distance
+        kstrong: 12 # k-strongest per azimuth to retain
+        threshold: 2.5 # used for both k-strongest (mult of mean) and cfar (mult of window stat)
+        # cen2018 parameters
+        zq: 3.0
+        sigma: 8
+        # cfar parameters
+        width: 40
+        guard: 2
+        kstat: 20 # used in oscfar, kth statistic to return in window
         visualize: true
 
     # odometry:

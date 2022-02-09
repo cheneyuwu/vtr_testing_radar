@@ -23,7 +23,7 @@ int64_t getStampFromPath(const std::string &path) {
   std::string stem = parts[parts.size() - 1];
   boost::split(parts, stem, boost::is_any_of("."));
   int64_t time1 = std::stoll(parts[0]);
-  return time1 * 1e3;
+  return time1 * 1000;
 }
 
 EdgeTransform load_T_robot_radar(const fs::path &path) {
@@ -142,8 +142,7 @@ int main(int argc, char **argv) {
 
     // publish clock for sim time
     auto time_msg = rosgraph_msgs::msg::Clock();
-    time_msg.clock.sec = timestamp / 1e9;
-    time_msg.clock.nanosec = timestamp % (int)1e9;
+    time_msg.clock = rclcpp::Time(timestamp);
     clock_publisher->publish(time_msg);
 
     // Convert message to query_data format and store into query_data

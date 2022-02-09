@@ -157,9 +157,6 @@ int main(int argc, char **argv) {
 
     // execute the pipeline
     tactic->input(query_data);
-
-    // wait for a while to look at output in rviz
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
 
   tactic.reset();

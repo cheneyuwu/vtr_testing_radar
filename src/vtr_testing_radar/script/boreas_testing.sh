@@ -1,10 +1,22 @@
-## Explain how to test radar pipeline
+echo "This script contains instructions to run all tests, do not run this script directly."
+exit 1
 
-## First launch RViz for visualization
+############ Explain how to test radar pipeline ############
+
+
+
+############################################################
+#### First launch RViz for visualization ####
 source /opt/ros/galactic/setup.bash  # source the ROS environment
 ros2 run rviz2 rviz2 -d ${VTRSRC}/rviz/radar.rviz  # launch rviz
 
-## Now start another terminal and run testing scripts
+
+
+############################################################
+#### Now start another terminal and run testing scripts ####
+
+
+## Terminal Setup (Run Following Once)
 
 # Define the following environment variables VTRB=VTR RaDAR
 export VTRRROOT=/ext0/ASRL/vtr_testing_radar/src/vtr_testing_radar    # location of this package CHANGE THIS!
@@ -18,6 +30,9 @@ LOC_INPUT=boreas-2021-11-02-11-16
 
 # Source the VTR environment with the testing package
 source ${VTRRROOT}/../../install/setup.bash
+
+
+## Using ONE of the following commands to launch a test
 
 # (TEST 1) Perform data preprocessing on a sequence (e.g. keypoint extraction)
 ros2 run vtr_testing_radar vtr_testing_radar_boreas_preprocessing  \

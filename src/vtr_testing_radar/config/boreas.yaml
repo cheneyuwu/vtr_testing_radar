@@ -9,16 +9,16 @@
         # tactic
         # "tactic",
         # "tactic.pipeline",
-        "tactic.module",
+        # "tactic.module",
         # "tactic.module.live_mem_manager",
         # "tactic.module.graph_mem_manager",
         # pose graph
         # "pose_graph",
         # pipeline specific
-        "radar.pipeline",
+        # "radar.pipeline",
         # "radar.navtech_extractor",
         # "radar.preprocessing",
-        # "radar.odometry_icp",
+        "radar.odometry_icp",
       ]
 
     ############ tactic configuration ############
@@ -84,7 +84,7 @@
         zq: 2.75
         sigma: 17
         # cfar parameters
-        width: 201 
+        width: 201
         guard: 3
         kstat: 20 # used in oscfar, kth statistic to return in window
         visualize: true
@@ -101,7 +101,7 @@
         type: radar.odometry_icp
 
         # motion prior terms
-        trajectory_smoothing: true
+        trajectory_smoothing: false
         use_constant_acc: false
         lin_acc_std_dev_x: 1.0
         lin_acc_std_dev_y: 0.1
@@ -113,11 +113,11 @@
         # ICP parameters
         num_threads: 4
         first_num_steps: 2 # number of steps to with a greater matching distance threshold
-        averaging_num_steps: 2 # averaging pose change over this number of steps until change is below a threshold at convergence
+        averaging_num_steps: 5 # averaging pose change over this number of steps until change is below a threshold at convergence
         initial_max_iter: 4 # phase 1 max iterations
         initial_max_pairing_dist: 5.0 # phase 1 max pairing distance in meters
-        refined_max_iter: 50 # phase 2 max iterations
-        refined_max_pairing_dist: 1.0 # phase 2 max pairing distance in meters
+        refined_max_iter: 500 # phase 2 max iterations
+        refined_max_pairing_dist: 5.0 # phase 2 max pairing distance in meters
 
         # steam parameters
         verbose: false

@@ -26,18 +26,31 @@ int64_t getStampFromPath(const std::string &path) {
   return time1 * 1e3;
 }
 
-EdgeTransform load_T_robot_radar(const std::string &path) {
-  std::ifstream ifs(path, std::ios::in);
+EdgeTransform load_T_robot_radar(const fs::path &path) {
+#if false
+  std::ifstream ifs1(path / "T_applanix_lidar.txt", std::ios::in);
+  std::ifstream ifs2(path / "T_radar_lidar.txt", std::ios::in);
 
-  Eigen::Matrix4d T_robot_radar_mat;
+  Eigen::Matrix4d T_applanix_lidar_mat;
   for (size_t row = 0; row < 4; row++)
-    for (size_t col = 0; col < 4; col++) ifs >> T_robot_radar_mat(row, col);
+    for (size_t col = 0; col < 4; col++) ifs1 >> T_applanix_lidar_mat(row, col);
+
+  Eigen::Matrix4d T_radar_lidar_mat;
+  for (size_t row = 0; row < 4; row++)
+    for (size_t col = 0; col < 4; col++) ifs2 >> T_radar_lidar_mat(row, col);
 
   Eigen::Matrix4d yfwd2xfwd;
   yfwd2xfwd << 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1;
 
-  EdgeTransform T_robot_radar(Eigen::Matrix4d(yfwd2xfwd * T_robot_radar_mat),
+  EdgeTransform T_robot_radar(Eigen::Matrix4d(yfwd2xfwd * T_applanix_lidar_mat *
+                                              T_radar_lidar_mat.inverse()),
                               Eigen::Matrix<double, 6, 6>::Zero());
+#else
+  (void)path;
+  // robot frame == radar frame
+  EdgeTransform T_robot_radar(Eigen::Matrix4d(Eigen::Matrix4d::Identity()),
+                              Eigen::Matrix<double, 6, 6>::Zero());
+#endif
 
   return T_robot_radar;
 }
@@ -95,8 +108,7 @@ int main(int argc, char **argv) {
   std::string robot_frame = "robot";
   std::string radar_frame = "radar";
 
-  const auto T_robot_radar =
-      load_T_robot_radar(odo_dir / "calib" / "T_applanix_radar.txt");
+  const auto T_robot_radar = load_T_robot_radar(odo_dir / "calib");
   const auto T_radar_robot = T_robot_radar.inverse();
   CLOG(WARNING, "test") << "Transform from " << robot_frame << " to "
                         << radar_frame << " has been set to" << T_radar_robot;
@@ -114,7 +126,7 @@ int main(int argc, char **argv) {
   // List of radar data
   std::vector<fs::directory_entry> files;
   for (const auto &dir_entry : fs::directory_iterator{odo_dir / "radar"})
-    files.push_back(dir_entry);
+    if (!fs::is_directory(dir_entry)) files.push_back(dir_entry);
   std::sort(files.begin(), files.end());
   CLOG(WARNING, "test") << "Found " << files.size() << " radar data";
 

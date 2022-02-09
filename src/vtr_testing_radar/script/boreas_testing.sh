@@ -56,3 +56,8 @@ ros2 run vtr_testing_radar vtr_testing_radar_boreas_odometry  \
 #      - undistorted point cloud: output from ICP module, which uses STEAM to undistort the point cloud
 #      - curr map odo: current map for odometry
 #      - odo path: history of robot poses at every radar frame as ros odometry msg
+# Evaluation:
+#   - dump odometry result to boreas expected format (txt file)
+python ${VTRRROOT}/script/boreas_generate_odometry_result.py --dataset ${VTRRDATA} --path ${VTRRRESULT}/${ODO_INPUT}
+#   - evaluate the result using the evaluation script
+python -m pyboreas.eval.odometry --gt ${VTRRDATA}  --pred ${VTRRRESULT}/${ODO_INPUT} --radar

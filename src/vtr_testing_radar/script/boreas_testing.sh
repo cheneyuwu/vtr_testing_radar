@@ -21,7 +21,9 @@ source ${VTRRROOT}/../../install/setup.bash
 
 # (TEST 1) Perform data preprocessing on a sequence (e.g. keypoint extraction)
 ros2 run vtr_testing_radar vtr_testing_radar_boreas_preprocessing  \
-  --ros-args  -r __ns:=/vtr  --params-file ${VTRRROOT}/config/boreas.yaml \
+  --ros-args -p use_sim_time:=true \
+  -r __ns:=/vtr \
+  --params-file ${VTRRROOT}/config/boreas.yaml \
   -p data_dir:=${VTRRRESULT}/${ODO_INPUT}/${ODO_INPUT} \
   -p odo_dir:=${VTRRDATA}/${ODO_INPUT}
 # Explanation:
@@ -31,3 +33,17 @@ ros2 run vtr_testing_radar vtr_testing_radar_boreas_preprocessing  \
 #      - fft scan: output from load_radar function
 #      - raw point cloud: output from keypoint detector
 #     see if these visualization are expected
+
+# (TEST 2) Perform odometry on a sequence
+ros2 run vtr_testing_radar vtr_testing_radar_boreas_odometry  \
+  --ros-args -p use_sim_time:=true \
+  -r __ns:=/vtr \
+  --params-file ${VTRRROOT}/config/boreas.yaml \
+  -p data_dir:=${VTRRRESULT}/${ODO_INPUT}/${ODO_INPUT} \
+  -p odo_dir:=${VTRRDATA}/${ODO_INPUT}
+# Explanation:
+#   - this script will load all radar data in time order and feed it to the preprocessing+odometry pipeline
+#   - in the rviz window, change `Global Options -> Fixed Frame` to "world", and look at the following:
+#      - undistorted point cloud: output from ICP module, which uses STEAM to undistort the point cloud
+#      - curr map odo: current map for odometry
+#      - odo path: history of robot poses at every radar frame as ros odometry msg

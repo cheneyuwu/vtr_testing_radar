@@ -16,7 +16,9 @@
         # "pose_graph",
         # pipeline specific
         "radar.pipeline",
-        "radar.navtech_extractor",
+        # "radar.navtech_extractor",
+        # "radar.preprocessing",
+        # "radar.odometry_icp",
       ]
 
     ############ tactic configuration ############
@@ -24,7 +26,7 @@
       task_queue_num_threads: 1
       task_queue_size: -1
 
-      enable_parallelization: true
+      enable_parallelization: false
       preprocessing_skippable: false
       odometry_mapping_skippable: false
       localization_skippable: false
@@ -53,12 +55,16 @@
       preprocessing: [
           # preprocessing thread modules
           "conversion",
-          #,"filtering"
+          "filtering",
         ]
 
-      # odometry: [
-      #     # odometry and mapping thread modules
-      #   ]
+      odometry: [
+          # odometry and mapping thread modules
+          "icp",
+          "mapping",
+          "keyframe_test",
+          "memory",
+        ]
 
       # localization: [
       #     # localization thread modules
@@ -68,7 +74,7 @@
       conversion:
         type: radar.navtech_extractor
         radar_resolution: 0.0438
-        detector: cen2018   # choose detector \in (kstrongest, cen2018, cacfar, oscfar)
+        detector: cen2018 # choose detector \in (kstrongest, cen2018, cacfar, oscfar)
         minr: 2.0 # mininum detection distance
         maxr: 80.0 # maximum detection distance
         kstrong: 12 # k-strongest per azimuth to retain
@@ -82,6 +88,64 @@
         kstat: 20 # used in oscfar, kth statistic to return in window
         visualize: true
 
-    # odometry:
+      filtering:
+        type: radar.preprocessing
+
+        frame_voxel_size: 0.3 # grid size for frame voxelization in meters
+
+        visualize: true
+
+    odometry:
+      icp:
+        type: radar.odometry_icp
+
+        # motion prior terms
+        trajectory_smoothing: true
+        use_constant_acc: false
+        lin_acc_std_dev_x: 1.0
+        lin_acc_std_dev_y: 0.1
+        lin_acc_std_dev_z: 0.1
+        ang_acc_std_dev_x: 0.1
+        ang_acc_std_dev_y: 0.1
+        ang_acc_std_dev_z: 1.0
+
+        # ICP parameters
+        num_threads: 4
+        first_num_steps: 2 # number of steps to with a greater matching distance threshold
+        averaging_num_steps: 2 # averaging pose change over this number of steps until change is below a threshold at convergence
+        initial_max_iter: 4 # phase 1 max iterations
+        initial_max_pairing_dist: 5.0 # phase 1 max pairing distance in meters
+        refined_max_iter: 50 # phase 2 max iterations
+        refined_max_pairing_dist: 1.0 # phase 2 max pairing distance in meters
+
+        # steam parameters
+        verbose: false
+        max_iterations: 1
+
+        # threshold
+        min_matched_ratio: 0.5
+
+        visualize: true
+
+      mapping:
+        type: radar.odometry_map_merging
+
+        map_voxel_size: 0.3 # voxel size of the map in meters
+        crop_range_front: 200.0 # odometry map crop range centered at vehicle in meters (radius of the odometry map)
+        back_over_front_ratio: 1.0 # ratio of the back crop range to the front crop range (not important)
+
+        visualize: true
+
+      keyframe_test:
+        type: radar.keyframe_test
+
+        max_translation: 10.0 # translation threshold in meters
+        max_rotation: 30.0 # rotation threshold in degrees
+
+      memory:
+        type: "live_mem_manager"
+
+        window_size: 5 # unload data older than this many keyframes
+
 
     # localization:

@@ -89,7 +89,8 @@ int main(int argc, char **argv) {
   auto tactic =
       std::make_shared<Tactic>(Tactic::Config::fromROS(node), pipeline,
                                pipeline_output, graph, callback);
-  tactic->setPipeline(PipelineMode::Idle);
+  tactic->setPipeline(PipelineMode::TeachBranch);
+  tactic->addRun();
 
   // Frame and transforms
   std::string robot_frame = "robot";

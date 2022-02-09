@@ -24,10 +24,10 @@ include_directories(
 )
 
 add_executable(${PROJECT_NAME}_boreas_preprocessing src/boreas_preprocessing.cpp)
-ament_target_dependencies(${PROJECT_NAME}_boreas_preprocessing
-  rclcpp
-  vtr_common vtr_logging vtr_radar
-)
+ament_target_dependencies(${PROJECT_NAME}_boreas_preprocessing rclcpp vtr_common vtr_logging vtr_radar)
+
+add_executable(${PROJECT_NAME}_boreas_odometry src/boreas_odometry.cpp)
+ament_target_dependencies(${PROJECT_NAME}_boreas_odometry rclcpp vtr_common vtr_logging vtr_radar)
 
 install(
   DIRECTORY include/
@@ -37,6 +37,7 @@ install(
 install(
   TARGETS
     ${PROJECT_NAME}_boreas_preprocessing
+    ${PROJECT_NAME}_boreas_odometry
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}

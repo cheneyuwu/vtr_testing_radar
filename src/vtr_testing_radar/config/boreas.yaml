@@ -78,13 +78,14 @@
         minr: 2.0 # mininum detection distance
         maxr: 80.0 # maximum detection distance
         kstrong: 12 # k-strongest per azimuth to retain
-        threshold: 2.5 # used for both k-strongest (mult of mean) and cfar (mult of window stat)
+        threshold: 1.5 # kstrongest(2.5)
+        threshold2: 1.2 # cfar: mult of mean, T = threshold * Z + threshold2 * mean
         # cen2018 parameters
-        zq: 3.0
-        sigma: 8
+        zq: 2.75
+        sigma: 17
         # cfar parameters
-        width: 40
-        guard: 2
+        width: 201 
+        guard: 3
         kstat: 20 # used in oscfar, kth statistic to return in window
         visualize: true
 

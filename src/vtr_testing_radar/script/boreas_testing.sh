@@ -1,16 +1,9 @@
 echo "This script contains instructions to run all tests, do not run this script directly."
 exit 1
 
-############ Explain how to test radar pipeline ############
-
-
-
-############################################################
-#### First launch RViz for visualization ####
-source /opt/ros/galactic/setup.bash  # source the ROS environment
-ros2 run rviz2 rviz2 -d ${VTRSRC}/rviz/radar.rviz  # launch rviz
-
-
+## First launch RViz for visualization
+#source /opt/ros/galactic/setup.bash  # source the ROS environment
+#ros2 run rviz2 rviz2 -d ${VTRSRC}/rviz/radar.rviz  # launch rviz
 
 ############################################################
 #### Now start another terminal and run testing scripts ####
@@ -19,14 +12,15 @@ ros2 run rviz2 rviz2 -d ${VTRSRC}/rviz/radar.rviz  # launch rviz
 ## Terminal Setup (Run Following Once)
 
 # Define the following environment variables VTRB=VTR RaDAR
-export VTRRROOT=/ext0/ASRL/vtr_testing_radar/src/vtr_testing_radar    # location of this package CHANGE THIS!
-export VTRRDATA=${VTRDATA}/boreas/sequences                           # dataset location (where the boreas-xxxxx folders at) CHANGE THIS!
-export VTRRRESULT=${VTRTEMP}/radar/boreas                             # result location MAYBE CHANGE THIS!
+export VTRRROOT=/home/keenan/ASRL/vtr_testing_radar/src/vtr_testing_radar    # location of this package CHANGE THIS!
+# export VTRRDATA=/media/backup2                           # dataset location (where the boreas-xxxxx folders at) CHANGE THIS!
+export VTRRDATA=/home/keenan/Documents/data/boreas
+export VTRRRESULT=/home/keenan/Desktop/vtr_results/                             # result location MAYBE CHANGE THIS!
 mkdir -p ${VTRRRESULT}
 
 # Choose a Teach (ODO_INPUT) and Repeat (LOC_INPUT) run from boreas dataset
-ODO_INPUT=boreas-2021-11-02-11-16
-LOC_INPUT=boreas-2021-11-02-11-16
+ODO_INPUT=boreas-2021-09-02-11-42
+LOC_INPUT=boreas-2021-09-02-11-42
 
 # Source the VTR environment with the testing package
 source ${VTRRROOT}/../../install/setup.bash

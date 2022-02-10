@@ -12,7 +12,7 @@ exit 1
 ## Terminal Setup (Run Following Once)
 
 # Define the following environment variables VTRB=VTR RaDAR
-export VTRRROOT=/home/keenan/ASRL/vtr_testing_radar/src/vtr_testing_radar    # location of this package CHANGE THIS!
+export VTRRROOT=/home/keenan/ASRL/vtr_testing_radar    # location of this package CHANGE THIS!
 # export VTRRDATA=/media/backup2                           # dataset location (where the boreas-xxxxx folders at) CHANGE THIS!
 export VTRRDATA=/home/keenan/Documents/data/boreas
 export VTRRRESULT=/home/keenan/Desktop/vtr_results/                             # result location MAYBE CHANGE THIS!
@@ -23,7 +23,7 @@ ODO_INPUT=boreas-2021-09-02-11-42
 LOC_INPUT=boreas-2021-09-02-11-42
 
 # Source the VTR environment with the testing package
-source ${VTRRROOT}/../../install/setup.bash
+source ${VTRRROOT}/install/setup.bash
 
 
 ## Using ONE of the following commands to launch a test
@@ -32,7 +32,7 @@ source ${VTRRROOT}/../../install/setup.bash
 ros2 run vtr_testing_radar vtr_testing_radar_boreas_preprocessing  \
   --ros-args -p use_sim_time:=true \
   -r __ns:=/vtr \
-  --params-file ${VTRRROOT}/config/boreas.yaml \
+  --params-file ${VTRRROOT}/src/vtr_testing_radar/config/boreas.yaml \
   -p data_dir:=${VTRRRESULT}/${ODO_INPUT}/${ODO_INPUT} \
   -p odo_dir:=${VTRRDATA}/${ODO_INPUT}
 # Explanation:
@@ -47,7 +47,7 @@ ros2 run vtr_testing_radar vtr_testing_radar_boreas_preprocessing  \
 ros2 run vtr_testing_radar vtr_testing_radar_boreas_odometry  \
   --ros-args -p use_sim_time:=true \
   -r __ns:=/vtr \
-  --params-file ${VTRRROOT}/config/boreas.yaml \
+  --params-file ${VTRRROOT}/src/vtr_testing_radar/config/boreas.yaml \
   -p data_dir:=${VTRRRESULT}/${ODO_INPUT}/${ODO_INPUT} \
   -p odo_dir:=${VTRRDATA}/${ODO_INPUT}
 # Explanation:
@@ -58,6 +58,6 @@ ros2 run vtr_testing_radar vtr_testing_radar_boreas_odometry  \
 #      - odo path: history of robot poses at every radar frame as ros odometry msg
 # Evaluation:
 #   - dump odometry result to boreas expected format (txt file)
-python ${VTRRROOT}/script/boreas_generate_odometry_result.py --dataset ${VTRRDATA} --path ${VTRRRESULT}/${ODO_INPUT}
+python ${VTRRROOT}/src/vtr_testing_radar/script/boreas_generate_odometry_result.py --dataset ${VTRRDATA} --path ${VTRRRESULT}/${ODO_INPUT}
 #   - evaluate the result using the evaluation script
 python -m pyboreas.eval.odometry --gt ${VTRRDATA}  --pred ${VTRRRESULT}/${ODO_INPUT} --radar

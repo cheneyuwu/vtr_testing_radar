@@ -35,45 +35,49 @@ class BagFileParser():
     rows = self.cursor.execute("SELECT timestamp, data FROM messages WHERE topic_id = {}".format(topic_id)).fetchall()
     return [(timestamp, deserialize_message(data, self.topic_msg_message[topic_name])) for timestamp, data in rows]
 
+
 def main(dataset_dir, result_dir):
   result_dir = osp.normpath(result_dir)
-  odo_inputs = [i for i in os.listdir(result_dir) if osp.isdir(osp.join(result_dir, i))]
-  print(odo_inputs)
+  odo_input = osp.basename(result_dir)
+  print("Result Directory:", result_dir)
+  print("Odometry Run:", odo_input)
+  print("Dataset Directory:", dataset_dir)
 
-  dataset = BoreasDataset(osp.normpath(dataset_dir), [[x] for x in odo_inputs])
+  dataset_odo = BoreasDataset(osp.normpath(dataset_dir), [[odo_input]])
 
-  for seq_num, odo_input in enumerate(odo_inputs):
-    odo_dir = osp.join(result_dir, odo_input)
+  odo_dir = osp.join(result_dir, odo_input)
 
-    result_dir = osp.join(odo_dir, "graph/data")
-    if not osp.exists(result_dir):
-      continue
-    print("Looking at result directory:", result_dir)
+  data_dir = osp.join(odo_dir, "graph/data")
+  if not osp.exists(data_dir):
+    return
+  print("Looking at result data directory:", data_dir)
 
-    # T_applanix_lidar = dataset.sequences[seq_num].calib.T_applanix_lidar
-    # T_radar_lidar = dataset.sequences[seq_num].calib.T_radar_lidar
-    # T_applanix_radar = T_applanix_lidar @ npla.inv(T_radar_lidar)
-    # T_robot_applanix = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
-    # T_robot_radar = T_robot_applanix @ T_applanix_radar
+  # T_applanix_lidar = dataset_odo.sequences[seq_num].calib.T_applanix_lidar
+  # T_radar_lidar = dataset_odo.sequences[seq_num].calib.T_radar_lidar
+  # T_applanix_radar = T_applanix_lidar @ npla.inv(T_radar_lidar)
+  # T_robot_applanix = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+  # T_robot_radar = T_robot_applanix @ T_applanix_radar
 
-    # get bag file
-    bag_file = '{0}/{1}/{1}_0.db3'.format(osp.abspath(result_dir), "odometry_result")
-    parser = BagFileParser(bag_file)
-    messages = parser.get_bag_messages("odometry_result")
+  # get bag file
+  bag_file = '{0}/{1}/{1}_0.db3'.format(osp.abspath(data_dir), "odometry_result")
+  parser = BagFileParser(bag_file)
+  messages = parser.get_bag_messages("odometry_result")
 
-    result = []
-    for _, message in enumerate(messages):
-      timestamp = int(message[1].timestamp / 1e3)
-      T_w_r_vec = np.array(message[1].t_world_robot.xi)[..., None]
-      T_w_r = se3op.vec2tran(T_w_r_vec)
-      T_w_a = T_w_r # @ T_robot_radar
-      T_a_w_res = npla.inv(T_w_a).flatten().tolist()[:12]
-      result.append([timestamp] + T_a_w_res)
+  result = []
+  for _, message in enumerate(messages):
+    timestamp = int(int(message[1].timestamp) / 1000)
+    T_w_r_vec = np.array(message[1].t_world_robot.xi)[..., None]
+    T_w_r = se3op.vec2tran(T_w_r_vec)
+    T_w_a = T_w_r  # @ T_robot_radar
+    T_a_w_res = npla.inv(T_w_a).flatten().tolist()[:12]
+    result.append([timestamp] + T_a_w_res)
 
-    with open(osp.join(result_dir, odo_dir+".txt"), "+w") as file:
-      writer = csv.writer(file, delimiter=' ')
-      writer.writerows(result)
-      print("Written to file:", odo_dir+".txt")
+  output_dir = osp.join(result_dir, "odometry_result")
+  os.makedirs(output_dir, exist_ok=True)
+  with open(osp.join(output_dir, odo_input + ".txt"), "+w") as file:
+    writer = csv.writer(file, delimiter=' ')
+    writer.writerows(result)
+    print("Written to file:", osp.join(output_dir, odo_input + ".txt"))
 
 
 if __name__ == "__main__":
@@ -83,7 +87,7 @@ if __name__ == "__main__":
   # Assuming following path structure:
   # <rosbag name>/metadata.yaml
   # <rosbag name>/<rosbag name>_0.db3
-  parser.add_argument('--dataset', default=os.getcwd(), type=str, help='path to boreas dataset (that contains boreas-xxxx folders)')
+  parser.add_argument('--dataset', default=os.getcwd(), type=str, help='path to boreas dataset (contains boreas-*)')
   parser.add_argument('--path', default=os.getcwd(), type=str, help='path to vtr folder (default: os.getcwd())')
 
   args = parser.parse_args()

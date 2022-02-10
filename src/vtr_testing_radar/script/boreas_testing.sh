@@ -2,8 +2,8 @@ echo "This script contains instructions to run all tests, do not run this script
 exit 1
 
 ## First launch RViz for visualization
-#source /opt/ros/galactic/setup.bash  # source the ROS environment
-#ros2 run rviz2 rviz2 -d ${VTRSRC}/rviz/radar.rviz  # launch rviz
+source /opt/ros/galactic/setup.bash  # source the ROS environment
+ros2 run rviz2 rviz2 -d ${VTRSRC}/rviz/radar.rviz  # launch rviz
 
 ############################################################
 #### Now start another terminal and run testing scripts ####
@@ -11,16 +11,15 @@ exit 1
 
 ## Terminal Setup (Run Following Once)
 
-# Define the following environment variables VTRB=VTR RaDAR
-export VTRRROOT=/home/keenan/ASRL/vtr_testing_radar    # location of this package CHANGE THIS!
-# export VTRRDATA=/media/backup2                           # dataset location (where the boreas-xxxxx folders at) CHANGE THIS!
-export VTRRDATA=/home/keenan/Documents/data/boreas
-export VTRRRESULT=/home/keenan/Desktop/vtr_results/                             # result location MAYBE CHANGE THIS!
+# Define the following environment variables VTRR=VTR RaDAR
+export VTRRROOT=/ext0/ASRL/vtr_testing_radar    # location of this repository CHANGE THIS!
+export VTRRDATA=${VTRDATA}/boreas/sequences     # dataset location (where the boreas-xxxxx folders at) CHANGE THIS!
+export VTRRRESULT=${VTRTEMP}/radar/boreas       # result location MAYBE CHANGE THIS!
 mkdir -p ${VTRRRESULT}
 
 # Choose a Teach (ODO_INPUT) and Repeat (LOC_INPUT) run from boreas dataset
 ODO_INPUT=boreas-2021-09-02-11-42
-LOC_INPUT=boreas-2021-09-02-11-42
+LOC_INPUT=boreas-2021-09-07-09-35
 
 # Source the VTR environment with the testing package
 source ${VTRRROOT}/install/setup.bash
@@ -60,4 +59,4 @@ ros2 run vtr_testing_radar vtr_testing_radar_boreas_odometry  \
 #   - dump odometry result to boreas expected format (txt file)
 python ${VTRRROOT}/src/vtr_testing_radar/script/boreas_generate_odometry_result.py --dataset ${VTRRDATA} --path ${VTRRRESULT}/${ODO_INPUT}
 #   - evaluate the result using the evaluation script
-python -m pyboreas.eval.odometry --gt ${VTRRDATA}  --pred ${VTRRRESULT}/${ODO_INPUT} --radar
+python -m pyboreas.eval.odometry --gt ${VTRRDATA}  --pred ${VTRRRESULT}/${ODO_INPUT}/odometry_result --radar

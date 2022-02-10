@@ -130,7 +130,7 @@
         initial_max_iter: 6
         initial_max_pairing_dist: 3.0
         initial_max_planar_dist: 1.0
-        refined_max_iter: 50
+        refined_max_iter: 100
         refined_max_pairing_dist: 1.0
         refined_max_planar_dist: 0.3
 
@@ -169,7 +169,7 @@
 
         map_version: "multi_exp_point_map"
 
-        visualize: false
+        visualize: true
 
       icp:
         type: lidar.localization_icp_v3
@@ -180,10 +180,10 @@
         num_threads: 4
         first_num_steps: 3
         averaging_num_steps: 3
-        initial_max_iter: 10
+        initial_max_iter: 6
         initial_max_pairing_dist: 5.0
         initial_max_planar_dist: 1.0
-        refined_max_iter: 50
+        refined_max_iter: 100
         refined_max_pairing_dist: 1.0
         refined_max_planar_dist: 0.3
 

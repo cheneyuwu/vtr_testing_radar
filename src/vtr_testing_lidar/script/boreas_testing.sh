@@ -18,8 +18,8 @@ export VTRRRESULT=${VTRTEMP}/lidar/boreas       # result location MAYBE CHANGE T
 mkdir -p ${VTRRRESULT}
 
 # Choose a Teach (ODO_INPUT) and Repeat (LOC_INPUT) run from boreas dataset
-ODO_INPUT=boreas-2020-12-01-13-26
-LOC_INPUT=boreas-2020-12-01-13-26
+ODO_INPUT=boreas-2021-09-02-11-42
+LOC_INPUT=boreas-2021-09-07-09-35
 
 # Source the VTR environment with the testing package
 source ${VTRRROOT}/install/setup.bash
@@ -46,4 +46,22 @@ ros2 run vtr_testing_lidar vtr_testing_lidar_boreas_odometry  \
 #   - dump odometry result to boreas expected format (txt file)
 python ${VTRRROOT}/src/vtr_testing_lidar/script/boreas_generate_odometry_result.py --dataset ${VTRRDATA} --path ${VTRRRESULT}/${ODO_INPUT}
 #   - evaluate the result using the evaluation script
-python -m pyboreas.eval.odometry --gt ${VTRRDATA}  --pred ${VTRRRESULT}/${ODO_INPUT}
+python -m pyboreas.eval.odometry --gt ${VTRRDATA}  --pred ${VTRRRESULT}/${ODO_INPUT}/odometry_result
+
+# (TEST 3) Perform localization on a sequence (only run this after TEST 2)
+cp -r ${VTRRRESULT}/${ODO_INPUT}/${ODO_INPUT}  ${VTRRRESULT}/${ODO_INPUT}/${ODO_INPUT}.bak
+rm -r ${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT}
+mkdir -p ${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT}
+cp -r ${VTRRRESULT}/${ODO_INPUT}/${ODO_INPUT}/*  ${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT}
+ros2 run vtr_testing_lidar vtr_testing_lidar_boreas_localization  \
+  --ros-args -p use_sim_time:=true \
+  -r __ns:=/vtr \
+  --params-file ${VTRRROOT}/src/vtr_testing_lidar/config/boreas.yaml \
+  -p data_dir:=${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT} \
+  -p odo_dir:=${VTRRDATA}/${ODO_INPUT} \
+  -p loc_dir:=${VTRRDATA}/${LOC_INPUT}
+# Evaluation:
+#   - dump localization result to boreas expected format (txt file)
+python ${VTRRROOT}/src/vtr_testing_lidar/script/boreas_generate_localization_result.py --dataset ${VTRRDATA} --path ${VTRRRESULT}/${ODO_INPUT}
+#   - evaluate the result using the evaluation script
+python -m pyboreas.eval.localization --gt ${VTRRDATA}  --pred ${VTRRRESULT}/${ODO_INPUT}/localization_result --ref_seq ${ODO_INPUT} --ref_sensor lidar

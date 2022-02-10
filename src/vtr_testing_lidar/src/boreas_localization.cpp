@@ -69,6 +69,52 @@ EdgeTransform load_T_robot_lidar(const fs::path &path) {
   return T_robot_lidar;
 }
 
+Eigen::Matrix3d toRoll(const double &r) {
+  Eigen::Matrix3d roll;
+  roll << 1, 0, 0, 0, cos(r), sin(r), 0, -sin(r), cos(r);
+  return roll;
+}
+
+Eigen::Matrix3d toPitch(const double &p) {
+  Eigen::Matrix3d pitch;
+  pitch << cos(p), 0, -sin(p), 0, 1, 0, sin(p), 0, cos(p);
+  return pitch;
+}
+
+Eigen::Matrix3d toYaw(const double &y) {
+  Eigen::Matrix3d yaw;
+  yaw << cos(y), sin(y), 0, -sin(y), cos(y), 0, 0, 0, 1;
+  return yaw;
+}
+
+Eigen::Matrix3d rpy2rot(const double &r, const double &p, const double &y) {
+  return toRoll(r) * toPitch(p) * toYaw(y);
+}
+
+EdgeTransform load_T_enu_lidar_init(const fs::path &path) {
+  std::ifstream ifs(path / "applanix" / "lidar_poses.csv", std::ios::in);
+
+  std::string header;
+  std::getline(ifs, header);
+
+  std::string first_pose;
+  std::getline(ifs, first_pose);
+
+  std::stringstream ss{first_pose};
+  std::vector<double> gt;
+  for (std::string str; std::getline(ss, str, ',');)
+    gt.push_back(std::stod(str));
+
+  Eigen::Matrix4d T_mat = Eigen::Matrix4d::Identity();
+  T_mat.block<3, 3>(0, 0) = rpy2rot(gt[7], gt[8], gt[9]);
+  T_mat.block<3, 1>(0, 3) << gt[1], gt[2], gt[3];
+
+  EdgeTransform T(T_mat);
+  T.setZeroCovariance();
+
+  return T;
+}
+
 int main(int argc, char **argv) {
   rclcpp::init(argc, argv);
   auto node = rclcpp::Node::make_shared("navigator");
@@ -77,6 +123,11 @@ int main(int argc, char **argv) {
   const auto odo_dir_str =
       node->declare_parameter<std::string>("odo_dir", "/tmp");
   fs::path odo_dir{utils::expand_user(utils::expand_env(odo_dir_str))};
+
+  // localization sequence directory
+  const auto loc_dir_str =
+      node->declare_parameter<std::string>("loc_dir", "/tmp");
+  fs::path loc_dir{utils::expand_user(utils::expand_env(loc_dir_str))};
 
   // Output directory
   const auto data_dir_str =
@@ -97,10 +148,11 @@ int main(int argc, char **argv) {
   configureLogging(log_filename, log_debug, log_enabled);
 
   CLOG(WARNING, "test") << "Odometry Directory: " << odo_dir.string();
+  CLOG(WARNING, "test") << "Localization Directory: " << loc_dir.string();
   CLOG(WARNING, "test") << "Output Directory: " << data_dir.string();
 
   // Pose graph
-  auto graph = tactic::Graph::MakeShared((data_dir / "graph").string(), false);
+  auto graph = tactic::Graph::MakeShared((data_dir / "graph").string(), true);
 
   // Pipeline
   auto pipeline_factory = std::make_shared<ROSPipelineFactory>(node);
@@ -116,14 +168,48 @@ int main(int argc, char **argv) {
   auto tactic =
       std::make_shared<Tactic>(Tactic::Config::fromROS(node), pipeline,
                                pipeline_output, graph, callback);
-  tactic->setPipeline(PipelineMode::TeachBranch);
+  tactic->setPipeline(PipelineMode::RepeatFollow);
   tactic->addRun();
+
+  // Get the path that we should repeat
+  VertexId::Vector sequence;
+  sequence.reserve(graph->numberOfVertices());
+  CLOG(WARNING, "test") << "Total number of vertices: "
+                        << graph->numberOfVertices();
+  // Extract the privileged sub graph from the full graph.
+  using LocEvaluator = tactic::PrivilegedEvaluator<tactic::GraphBase>;
+  auto evaluator = std::make_shared<LocEvaluator>(*graph);
+  auto privileged_path = graph->getSubgraph(0ul, evaluator);
+  std::stringstream ss;
+  ss << "Repeat vertices: ";
+  for (auto it = privileged_path->begin(0ul); it != privileged_path->end();
+       ++it) {
+    ss << it->v()->id() << " ";
+    sequence.push_back(it->v()->id());
+  }
+  CLOG(WARNING, "test") << ss.str();
+
+  const auto T_loc_odo_init = [&]() {
+    const auto T_robot_lidar_odo = load_T_robot_lidar(odo_dir);
+    const auto T_enu_lidar_odo = load_T_enu_lidar_init(odo_dir);
+
+    const auto T_robot_lidar_loc = load_T_robot_lidar(loc_dir);
+    const auto T_enu_lidar_loc = load_T_enu_lidar_init(loc_dir);
+
+    return T_robot_lidar_loc * T_enu_lidar_loc.inverse() * T_enu_lidar_odo *
+           T_robot_lidar_odo.inverse();
+  }();
+  CLOG(WARNING, "test")
+      << "Transform from localization to odometry has been set to "
+      << T_loc_odo_init.vec().transpose();
+
+  tactic->setPath(sequence, /* trunk sid */ 0, T_loc_odo_init);
 
   // Frame and transforms
   std::string robot_frame = "robot";
   std::string lidar_frame = "lidar";
 
-  const auto T_robot_lidar = load_T_robot_lidar(odo_dir);
+  const auto T_robot_lidar = load_T_robot_lidar(loc_dir);
   const auto T_lidar_robot = T_robot_lidar.inverse();
   CLOG(WARNING, "test") << "Transform from " << robot_frame << " to "
                         << lidar_frame << " has been set to" << T_lidar_robot;
@@ -140,7 +226,7 @@ int main(int argc, char **argv) {
 
   // List of lidar data
   std::vector<fs::directory_entry> files;
-  for (const auto &dir_entry : fs::directory_iterator{odo_dir / "lidar"})
+  for (const auto &dir_entry : fs::directory_iterator{loc_dir / "lidar"})
     if (!fs::is_directory(dir_entry)) files.push_back(dir_entry);
   std::sort(files.begin(), files.end());
   CLOG(WARNING, "test") << "Found " << files.size() << " lidar data";

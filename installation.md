@@ -26,7 +26,7 @@ Also to your local filesystem, so that you don't have to access them from within
 ```
 cd ${VTRSRC}
 git clone git@github.com:utiasASRL/vtr3.git .
-git checkout main_radar  # use the main_lidar branch
+git checkout main_lidar  # use the main_lidar branch
 git submodule update --init --remote
 ```
 
@@ -41,13 +41,15 @@ cd ${VTRROOT}
 git clone git@github.com:cheneyuwu/vtr_testing_radar.git
 ```
 
-## Build VTR3 Docker container
+## Build VTR3 Docker Image
 
-This builds a container that has all dependencies installed.
+This builds a image that has all dependencies installed.
+
+NOTE that if you are using obelisk, then change the image name to `vtr3_main_lidar_<your name>` or something else to avoid conflicts.
 
 ```
 cd ${VTRSRC}
-docker build -t vtr3 \
+docker build -t vtr3_main_lidar \
   --build-arg USERID=$(id -u) \
   --build-arg GROUPID=$(id -g) \
   --build-arg USERNAME=$(whoami) \
@@ -61,16 +63,16 @@ Reference: https://github.com/utiasASRL/vtr3/wiki/EXPERIMENTAL-Running-VTR3-from
 Install nvidia docker runtime first: https://nvidia.github.io/nvidia-container-runtime/
 
 ```
-docker run -it --rm --name vtr3 \
+docker run -it --rm --name vtr3_main_lidar \
   --privileged \
   --network=host \
   --gpus all \
   -e DISPLAY=$DISPLAY \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
-  -v ${HOME}/ASRL:${HOME}/ASRL:rw vtr3
+  -v ${HOME}/ASRL:${HOME}/ASRL:rw vtr3_main_lidar
 ```
 
-FYI: to start a new terminal with the existing container: `docker exec -it --privileged vtr3 bash`
+FYI: to start a new terminal with the existing container: `docker exec -it --privileged vtr3_main_lidar bash`
 
 Reference: https://github.com/utiasASRL/vtr3/wiki/EXPERIMENTAL-Running-VTR3-from-a-Docker-Container
 
@@ -81,7 +83,7 @@ Start a new terminal (**terminal 1**) and enter the container
 ```
 source /opt/ros/galactic/setup.bash  # source the ROS environment
 cd ${VTRSRC}/main
-colcon build --symlink-install --packages-up-to vtr_lidar  # only build up to the vtr_lidar/vtr_radar package
+colcon build --symlink-install --packages-up-to vtr_lidar vtr_radar # only build up to the vtr_lidar/vtr_radar package
 ```
 
 wait until it finishes.

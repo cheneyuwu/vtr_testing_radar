@@ -203,7 +203,7 @@ int main(int argc, char **argv) {
       << "Transform from localization to odometry has been set to "
       << T_loc_odo_init.vec().transpose();
 
-  tactic->setPath(sequence, /* trunk sid */ 0, T_loc_odo_init);
+  tactic->setPath(sequence, /* trunk sid */ 0, T_loc_odo_init, true);
 
   // Frame and transforms
   std::string robot_frame = "robot";

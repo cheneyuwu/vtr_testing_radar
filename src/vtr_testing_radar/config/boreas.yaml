@@ -3,7 +3,7 @@
     ############ system configuration ############
     # Data logging
     log_to_file: true
-    log_debug: false
+    log_debug: true
     log_enabled: [
         ## ADD LOGGER IDS HERE
         # tactic
@@ -18,7 +18,8 @@
         # "radar.pipeline",
         # "radar.navtech_extractor",
         # "radar.preprocessing",
-        "radar.odometry_icp",
+        # "radar.odometry_icp",
+        "radar.localization_icp",
       ]
 
     ############ tactic configuration ############
@@ -43,7 +44,7 @@
         angle_weight: 7.0
         search_depth: 5
         search_back_depth: 10
-        distance_warning: 5.0
+        distance_warning: 30.0
 
       visualize: true
       rviz_loc_path_offset: [0., 0., 0.]
@@ -66,9 +67,12 @@
           "memory",
         ]
 
-      # localization: [
-      #     # localization thread modules
-      #   ]
+      localization: [
+          # localization thread modules
+          "recall",
+          "icp",
+          "memory",
+        ]
 
     preprocessing:
       conversion:
@@ -160,5 +164,39 @@
 
         window_size: 5 # unload data older than this many keyframes
 
+    localization:
+      recall:
+        type: radar.localization_map_recall
 
-    # localization:
+        map_version: "point_map"
+
+        visualize: true
+
+      icp:
+        type: radar.localization_icp
+
+        use_pose_prior: false
+
+        # ICP parameters
+        num_threads: 4
+        first_num_steps: 2
+        averaging_num_steps: 5
+        initial_max_iter: 4
+        initial_max_pairing_dist: 5.0
+        initial_max_planar_dist: 5.0
+        refined_max_iter: 1000
+        refined_max_pairing_dist: 5.0
+        refined_max_planar_dist: 5.0
+
+        # steam parameters
+        verbose: false
+        max_iterations: 1
+
+        # threshold
+        min_matched_ratio: 0.0
+
+      memory:
+        type: "graph_mem_manager"
+
+        vertex_life_span: 5
+        window_size: 3

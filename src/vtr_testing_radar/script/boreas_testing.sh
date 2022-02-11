@@ -60,3 +60,21 @@ ros2 run vtr_testing_radar vtr_testing_radar_boreas_odometry  \
 python ${VTRRROOT}/src/vtr_testing_radar/script/boreas_generate_odometry_result.py --dataset ${VTRRDATA} --path ${VTRRRESULT}/${ODO_INPUT}
 #   - evaluate the result using the evaluation script
 python -m pyboreas.eval.odometry --gt ${VTRRDATA}  --pred ${VTRRRESULT}/${ODO_INPUT}/odometry_result --radar
+
+# (TEST 3) Perform localization on a sequence (only run this after TEST 2)
+cp -r ${VTRRRESULT}/${ODO_INPUT}/${ODO_INPUT}  ${VTRRRESULT}/${ODO_INPUT}/${ODO_INPUT}.bak
+rm -r ${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT}
+mkdir -p ${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT}
+cp -r ${VTRRRESULT}/${ODO_INPUT}/${ODO_INPUT}/*  ${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT}
+ros2 run vtr_testing_radar vtr_testing_radar_boreas_localization  \
+  --ros-args -p use_sim_time:=true \
+  -r __ns:=/vtr \
+  --params-file ${VTRRROOT}/src/vtr_testing_radar/config/boreas.yaml \
+  -p data_dir:=${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT} \
+  -p odo_dir:=${VTRRDATA}/${ODO_INPUT} \
+  -p loc_dir:=${VTRRDATA}/${LOC_INPUT}
+# # Evaluation:
+# #   - dump localization result to boreas expected format (txt file)
+# python ${VTRRROOT}/src/vtr_testing_radar/script/boreas_generate_localization_result.py --dataset ${VTRRDATA} --path ${VTRRRESULT}/${ODO_INPUT}
+# #   - evaluate the result using the evaluation script
+# python -m pyboreas.eval.localization --gt ${VTRRDATA}  --pred ${VTRRRESULT}/${ODO_INPUT}/localization_result --ref_seq ${ODO_INPUT} --ref_sensor radar --radar

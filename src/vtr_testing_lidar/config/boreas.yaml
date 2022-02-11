@@ -88,7 +88,7 @@
 
         num_threads: 4
 
-        crop_range: 100.0
+        crop_range: 60.0
 
         frame_voxel_size: 0.3 # grid subsampling voxel size
 
@@ -147,8 +147,10 @@
         type: lidar.odometry_map_merging_v2
 
         map_voxel_size: 0.3
-        crop_range_front: 100.0
+        crop_range_front: 60.0
         back_over_front_ratio: 1.0
+
+        point_life_time: 10.0
 
         visualize: true
 

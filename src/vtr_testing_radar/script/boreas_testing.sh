@@ -12,7 +12,7 @@ ros2 run rviz2 rviz2 -d ${VTRSRC}/rviz/radar.rviz  # launch rviz
 ## Terminal Setup (Run Following Once)
 
 # Define the following environment variables VTRR=VTR RaDAR
-export VTRRROOT=/ext0/ASRL/vtr_testing_radar    # location of this repository CHANGE THIS!
+export VTRRROOT=${VTRROOT}/vtr_testing_radar    # location of this repository CHANGE THIS!
 export VTRRDATA=${VTRDATA}/boreas/sequences     # dataset location (where the boreas-xxxxx folders at) CHANGE THIS!
 export VTRRRESULT=${VTRTEMP}/radar/boreas       # result location MAYBE CHANGE THIS!
 mkdir -p ${VTRRRESULT}

@@ -3,7 +3,7 @@
     ############ system configuration ############
     # Data logging
     log_to_file: true
-    log_debug: true
+    log_debug: false
     log_enabled: [
         ## ADD LOGGER IDS HERE
         # tactic
@@ -18,8 +18,8 @@
         # "radar.pipeline",
         # "radar.navtech_extractor",
         # "radar.preprocessing",
-        # "radar.odometry_icp",
-        "radar.localization_icp",
+        "radar.odometry_icp",
+        # "radar.localization_icp",
       ]
 
     ############ tactic configuration ############
@@ -78,25 +78,38 @@
       conversion:
         type: radar.navtech_extractor
         radar_resolution: 0.0438
-        detector: cen2018 # choose detector \in (kstrongest, cen2018, cacfar, oscfar)
+        detector: modified_cacfar # choose detector \in (kstrongest, cen2018, cacfar, oscfar, modified_cacfar)
         minr: 2.0 # mininum detection distance
         maxr: 80.0 # maximum detection distance
-        kstrong: 12 # k-strongest per azimuth to retain
-        threshold: 1.5 # kstrongest(2.5)
-        threshold2: 1.2 # cfar: mult of mean, T = threshold * Z + threshold2 * mean
-        # cen2018 parameters
-        zq: 2.75
-        sigma: 17
-        # cfar parameters
-        width: 201
-        guard: 3
-        kstat: 20 # used in oscfar, kth statistic to return in window
+        kstrong:
+          kstrong: 20 # k-strongest per azimuth to retain
+          threshold: 2.5 # threshold for k-strongest
+        cen2018:
+          zq: 2.75
+          sigma: 17
+        cacfar:
+          width: 101
+          guard: 5
+          threshold: 0.2
+          threshold2: 4.0 # cfar: mult of mean, T = threshold * Z + threshold2 * mean
+        oscfar:
+          width: 101
+          guard: 5
+          kstat: 20 # used in oscfar, kth statistic to return in window
+          threshold: 0.2
+          threshold2: 4.0 # cfar: mult of mean, T = threshold * Z + threshold2 * mean
+        modified_cacfar:
+          width: 101
+          guard: 5
+          threshold: 0.2
+          threshold2: 4.0 # cfar: mult of mean, T = threshold * Z + threshold2 * mean
+
         visualize: true
 
       filtering:
         type: radar.preprocessing
 
-        frame_voxel_size: 0.5 # grid size for frame voxelization in meters
+        frame_voxel_size: 1.0 # grid size for frame voxelization in meters
 
         window_size: 3.0 # number of neighboring azimuths used to compute line normal
         aximuth_res: 0.015707963267948967 # azimuth resolution in radians (0.1 in degree), giveng M=400
@@ -104,7 +117,7 @@
         num_threads: 1 # number of threads for nearest neighbor search
 
         num_sample_linearity: 5000 # max number of sample after filtering based on linearity
-        min_linearity_score: -1.0 # min linearity score (negative value means no filtering)
+        min_linearity_score: 0.0 # min linearity score (negative value means no filtering)
 
         visualize: true
 
@@ -115,12 +128,12 @@
         # motion prior terms
         trajectory_smoothing: false
         use_constant_acc: false
-        lin_acc_std_dev_x: 1.0
-        lin_acc_std_dev_y: 0.1
-        lin_acc_std_dev_z: 0.1
-        ang_acc_std_dev_x: 0.1
-        ang_acc_std_dev_y: 0.1
-        ang_acc_std_dev_z: 1.0
+        lin_acc_std_dev_x: 0.1
+        lin_acc_std_dev_y: 0.0001
+        lin_acc_std_dev_z: 0.0001
+        ang_acc_std_dev_x: 0.0001
+        ang_acc_std_dev_y: 0.0001
+        ang_acc_std_dev_z: 0.01
 
         # ICP parameters
         num_threads: 4
@@ -138,18 +151,18 @@
         max_iterations: 1
 
         # threshold
-        min_matched_ratio: 0.0
+        min_matched_ratio: 0.8
 
         visualize: true
 
       mapping:
         type: radar.odometry_map_merging
 
-        map_voxel_size: 0.5 # voxel size of the map in meters
+        map_voxel_size: 1.0 # voxel size of the map in meters
         crop_range_front: 80.0 # odometry map crop range centered at vehicle in meters (radius of the odometry map)
         back_over_front_ratio: 1.0 # ratio of the back crop range to the front crop range (not important)
 
-        point_life_time: 10.0 # point life time based on number of map updates
+        point_life_time: 3.0 # point life time based on number of map updates
 
         visualize: true
 

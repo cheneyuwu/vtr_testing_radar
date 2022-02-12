@@ -126,17 +126,19 @@
         type: radar.odometry_icp
 
         # motion prior terms
-        trajectory_smoothing: false
+        trajectory_smoothing: true
         use_constant_acc: false
-        lin_acc_std_dev_x: 0.1
+        lin_acc_std_dev_x: 1.0
         lin_acc_std_dev_y: 0.0001
         lin_acc_std_dev_z: 0.0001
         ang_acc_std_dev_x: 0.0001
         ang_acc_std_dev_y: 0.0001
         ang_acc_std_dev_z: 0.01
 
+        velocity_damping_factor: 0.5
+
         # ICP parameters
-        num_threads: 4
+        num_threads: 1
         first_num_steps: 2 # number of steps to with a greater matching distance threshold
         averaging_num_steps: 5 # averaging pose change over this number of steps until change is below a threshold at convergence
         initial_max_iter: 4 # phase 1 max iterations
@@ -145,13 +147,14 @@
         refined_max_iter: 1000 # phase 2 max iterations
         refined_max_pairing_dist: 5.0 # phase 2 max pairing distance in meters
         refined_max_planar_dist: 5.0 # phase 2 max planar distance in meters
+        huber_delta: 1.0 # huber loss threshold for ICP
 
         # steam parameters
         verbose: false
         max_iterations: 1
 
         # threshold
-        min_matched_ratio: 0.8
+        min_matched_ratio: 0.0
 
         visualize: true
 
@@ -191,7 +194,7 @@
         use_pose_prior: false
 
         # ICP parameters
-        num_threads: 4
+        num_threads: 1
         first_num_steps: 2
         averaging_num_steps: 5
         initial_max_iter: 4
@@ -200,6 +203,7 @@
         refined_max_iter: 1000
         refined_max_pairing_dist: 5.0
         refined_max_planar_dist: 5.0
+        huber_delta: 1.0
 
         # steam parameters
         verbose: false

@@ -73,8 +73,8 @@ ros2 run vtr_testing_radar vtr_testing_radar_boreas_localization  \
   -p data_dir:=${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT} \
   -p odo_dir:=${VTRRDATA}/${ODO_INPUT} \
   -p loc_dir:=${VTRRDATA}/${LOC_INPUT}
-# # Evaluation:
-# #   - dump localization result to boreas expected format (txt file)
-# python ${VTRRROOT}/src/vtr_testing_radar/script/boreas_generate_localization_result.py --dataset ${VTRRDATA} --path ${VTRRRESULT}/${ODO_INPUT}
-# #   - evaluate the result using the evaluation script
-# python -m pyboreas.eval.localization --gt ${VTRRDATA}  --pred ${VTRRRESULT}/${ODO_INPUT}/localization_result --ref_seq ${ODO_INPUT} --ref_sensor radar --radar
+# Evaluation:
+#   - dump localization result to boreas expected format (txt file)
+python ${VTRRROOT}/src/vtr_testing_radar/script/boreas_generate_localization_result.py --dataset ${VTRRDATA} --path ${VTRRRESULT}/${ODO_INPUT}
+#   - evaluate the result using the evaluation script
+python -m pyboreas.eval.localization --gt ${VTRRDATA}  --pred ${VTRRRESULT}/${ODO_INPUT}/localization_result --ref_seq ${ODO_INPUT} --ref_sensor radar --radar

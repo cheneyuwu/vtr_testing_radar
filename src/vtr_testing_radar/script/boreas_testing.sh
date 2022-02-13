@@ -31,10 +31,7 @@ bash ${VTRRROOT}/src/vtr_testing_radar/script/test_preprocessing.sh ${ODO_INPUT}
 # (TEST 2) Perform odometry on a sequence
 bash ${VTRRROOT}/src/vtr_testing_radar/script/test_odometry.sh ${ODO_INPUT}
 # Evaluation:
-#   - dump odometry result to boreas expected format (txt file)
-python ${VTRRROOT}/src/vtr_testing_radar/script/boreas_generate_odometry_result.py --dataset ${VTRRDATA} --path ${VTRRRESULT}/${ODO_INPUT}
-#   - evaluate the result using the evaluation script
-python -m pyboreas.eval.odometry --gt ${VTRRDATA} --pred ${VTRRRESULT}/${ODO_INPUT}/odometry_result --radar
+bash ${VTRRROOT}/src/vtr_testing_radar/script/test_odometry_eval.sh ${ODO_INPUT}
 
 # (TEST 3) Perform localization on a sequence (only run this after TEST 2)
 bash ${VTRRROOT}/src/vtr_testing_radar/script/test_localization.sh ${ODO_INPUT} ${LOC_INPUT}

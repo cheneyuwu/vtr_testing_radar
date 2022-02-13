@@ -10,10 +10,11 @@ SEQUENCES=(
   'boreas-2021-06-29-20-43'
   'boreas-2021-09-08-21-00'
   'boreas-2021-09-09-15-28'
-  'boreas-2021-10-05-15-35'
-  'boreas-2021-10-26-12-35'
-  'boreas-2021-11-06-18-55'
-  'boreas-2021-11-28-09-18'
+  # the following runs use a new radar, not working...
+  # 'boreas-2021-10-05-15-35'
+  # 'boreas-2021-10-26-12-35'
+  # 'boreas-2021-11-06-18-55'
+  # 'boreas-2021-11-28-09-18'
 )
 
 # maximum number of jobs running in parallel
@@ -26,10 +27,12 @@ export VTRRRESULT=${VTRTEMP}/radar/boreas    # result location MAYBE CHANGE THIS
 mkdir -p ${VTRRRESULT}
 
 ODOMETRY_SCRIPT="${VTRRROOT}/src/vtr_testing_radar/script/test_odometry.sh"
+ODOMETRY_EVAL_SCRIPT="${VTRRROOT}/src/vtr_testing_radar/script/test_odometry_eval.sh"
 
 declare -A pids
 
 for seq in ${SEQUENCES[@]}; do
+  echo "Executing command: bash $ODOMETRY_SCRIPT $seq &>/dev/null &"
   ### command to execute
   bash $ODOMETRY_SCRIPT $seq &>/dev/null &
   ###
@@ -47,4 +50,9 @@ for key in ${!pids[@]}; do
   wait ${pids[${key}]}
   echo "Process ${key} finished with return code ${?}"
   unset pids[${key}]
+done
+
+for seq in ${SEQUENCES[@]}; do
+  echo "Executing command: bash $ODOMETRY_EVAL_SCRIPT $seq"
+  bash $ODOMETRY_EVAL_SCRIPT $seq
 done

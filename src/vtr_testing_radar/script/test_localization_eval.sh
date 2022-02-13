@@ -4,10 +4,9 @@
 
 # Get arguments
 ODO_INPUT=$1
-LOC_INPUT=$2
 
 # Log
-echo "Evaluating localization of sequence ${LOC_INPUT} to reference sequence ${ODO_INPUT}, storing result to ${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT}"
+echo "Evaluating localization to reference sequence ${ODO_INPUT}, storing result to ${VTRRRESULT}/${ODO_INPUT}"
 
 # Source the VTR environment with the testing package
 source ${VTRRROOT}/install/setup.bash

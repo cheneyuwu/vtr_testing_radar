@@ -6,7 +6,7 @@ SEQUENCES=(
   'boreas-2021-03-09-14-23'
   'boreas-2021-06-29-18-53'
   'boreas-2021-09-08-21-00'
-  # 'boreas-2021-09-09-15-28'  # TODO look into this run, also not working
+  # 'boreas-2021-09-09-15-28'  # this is a st george run
   # the following runs use a new radar, which does not work
   # 'boreas-2021-10-05-15-35'
   # 'boreas-2021-10-26-12-35'

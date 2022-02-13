@@ -39,7 +39,4 @@ python -m pyboreas.eval.odometry --gt ${VTRRDATA} --pred ${VTRRRESULT}/${ODO_INP
 # (TEST 3) Perform localization on a sequence (only run this after TEST 2)
 bash ${VTRRROOT}/src/vtr_testing_radar/script/test_localization.sh ${ODO_INPUT} ${LOC_INPUT}
 # Evaluation:
-#   - dump localization result to boreas expected format (txt file)
-python ${VTRRROOT}/src/vtr_testing_radar/script/boreas_generate_localization_result.py --dataset ${VTRRDATA} --path ${VTRRRESULT}/${ODO_INPUT}
-#   - evaluate the result using the evaluation script
-python -m pyboreas.eval.localization --gt ${VTRRDATA} --pred ${VTRRRESULT}/${ODO_INPUT}/localization_result --ref_seq ${ODO_INPUT} --ref_sensor radar --radar
+bash ${VTRRROOT}/src/vtr_testing_radar/script/test_localization_eval.sh ${ODO_INPUT} ${LOC_INPUT}

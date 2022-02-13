@@ -9,6 +9,7 @@ include("$ENV{VTRSRC}/main/src/vtr_common/vtr_include.cmake")
 find_package(ament_cmake REQUIRED)
 
 find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
 
 find_package(vtr_common REQUIRED)
 find_package(vtr_logging REQUIRED)
@@ -24,13 +25,13 @@ include_directories(
 )
 
 add_executable(${PROJECT_NAME}_boreas_preprocessing src/boreas_preprocessing.cpp)
-ament_target_dependencies(${PROJECT_NAME}_boreas_preprocessing rclcpp vtr_common vtr_logging vtr_lidar)
+ament_target_dependencies(${PROJECT_NAME}_boreas_preprocessing rclcpp std_msgs vtr_common vtr_logging vtr_lidar)
 
 add_executable(${PROJECT_NAME}_boreas_odometry src/boreas_odometry.cpp)
-ament_target_dependencies(${PROJECT_NAME}_boreas_odometry rclcpp vtr_common vtr_logging vtr_lidar)
+ament_target_dependencies(${PROJECT_NAME}_boreas_odometry rclcpp std_msgs vtr_common vtr_logging vtr_lidar)
 
 add_executable(${PROJECT_NAME}_boreas_localization src/boreas_localization.cpp)
-ament_target_dependencies(${PROJECT_NAME}_boreas_localization rclcpp vtr_common vtr_logging vtr_lidar)
+ament_target_dependencies(${PROJECT_NAME}_boreas_localization rclcpp std_msgs vtr_common vtr_logging vtr_lidar)
 
 install(
   DIRECTORY include/

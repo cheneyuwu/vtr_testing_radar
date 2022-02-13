@@ -2,6 +2,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
+#include "std_msgs/msg/string.hpp"
 
 #include "vtr_common/timing/utils.hpp"
 #include "vtr_common/utils/filesystem.hpp"
@@ -84,6 +85,15 @@ int main(int argc, char **argv) {
 
   CLOG(WARNING, "test") << "Odometry Directory: " << odo_dir.string();
   CLOG(WARNING, "test") << "Output Directory: " << data_dir.string();
+
+  std::vector<std::string> parts;
+  boost::split(parts, odo_dir_str, boost::is_any_of("/"));
+  auto stem = parts.back();
+  boost::replace_all(stem, "-", "_");
+  CLOG(WARNING, "test") << "Publishing status to topic: "
+                        << (stem + "_radar_preprocessing");
+  const auto status_publisher = node->create_publisher<std_msgs::msg::String>(
+      stem + "_radar_preprocessing", 1);
 
   // Pose graph
   auto graph = tactic::Graph::MakeShared((data_dir / "graph").string(), false);
@@ -169,6 +179,11 @@ int main(int argc, char **argv) {
     tactic->input(query_data);
 
     // wait for a while to look at output in rviz
+    std_msgs::msg::String status_msg;
+    status_msg.data = "Finished processing radar frame " +
+                      std::to_string(frame) + " with timestamp " +
+                      std::to_string(timestamp);
+    status_publisher->publish(status_msg);
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
 

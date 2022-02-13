@@ -2,6 +2,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
+#include "std_msgs/msg/string.hpp"
 
 #include "vtr_common/timing/utils.hpp"
 #include "vtr_common/utils/filesystem.hpp"
@@ -138,6 +139,15 @@ int main(int argc, char **argv) {
   CLOG(WARNING, "test") << "Localization Directory: " << loc_dir.string();
   CLOG(WARNING, "test") << "Output Directory: " << data_dir.string();
 
+  std::vector<std::string> parts;
+  boost::split(parts, loc_dir_str, boost::is_any_of("/"));
+  auto stem = parts.back();
+  boost::replace_all(stem, "-", "_");
+  CLOG(WARNING, "test") << "Publishing status to topic: "
+                        << (stem + "_radar_localization");
+  const auto status_publisher = node->create_publisher<std_msgs::msg::String>(
+      stem + "_radar_localization", 1);
+
   // Pose graph
   auto graph = tactic::Graph::MakeShared((data_dir / "graph").string(), true);
 
@@ -255,6 +265,12 @@ int main(int argc, char **argv) {
 
     // execute the pipeline
     tactic->input(query_data);
+
+    std_msgs::msg::String status_msg;
+    status_msg.data = "Finished processing radar frame " +
+                      std::to_string(frame) + " with timestamp " +
+                      std::to_string(timestamp);
+    status_publisher->publish(status_msg);
   }
 
   tactic.reset();

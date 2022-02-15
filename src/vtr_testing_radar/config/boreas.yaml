@@ -3,7 +3,7 @@
     ############ system configuration ############
     # Data logging
     log_to_file: true
-    log_debug: false
+    log_debug: true
     log_enabled: [
         ## ADD LOGGER IDS HERE
         # tactic
@@ -18,8 +18,9 @@
         # "radar.pipeline",
         # "radar.navtech_extractor",
         # "radar.preprocessing",
-        "radar.odometry_icp",
+        # "radar.odometry_icp",
         # "radar.localization_icp",
+        "radar.mcransac",
       ]
 
     ############ tactic configuration ############
@@ -61,6 +62,7 @@
 
       odometry: [
           # odometry and mapping thread modules
+          "mcransac",
           "icp",
           "mapping",
           "keyframe_test",
@@ -81,6 +83,7 @@
         detector: modified_cacfar # choose detector \in (kstrongest, cen2018, cacfar, oscfar, modified_cacfar)
         minr: 2.0 # mininum detection distance
         maxr: 80.0 # maximum detection distance
+        cart_resolution: 0.25 # m/pixel of BEV Cartesian radar image
         kstrong:
           kstrong: 20 # k-strongest per azimuth to retain
           threshold: 2.5 # threshold for k-strongest
@@ -122,6 +125,21 @@
         visualize: true
 
     odometry:
+      mcransac:
+        type: radar.mcransac
+        tolerance: 0.1225 # matched with squared error less than this are inliers
+        inlier_ratio: 0.9
+        iterations: 100
+        max_gn_iterations: 10
+        epsilon_converge: 0.0001
+        patch_size: 21
+        nndr: 0.8
+
+        filter_pc: true
+        init_icp: true
+
+        visualize: true
+
       icp:
         type: radar.odometry_icp
 

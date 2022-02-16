@@ -80,7 +80,7 @@
       conversion:
         type: radar.navtech_extractor
         radar_resolution: 0.0596
-        detector: cen2018 # choose detector \in (kstrongest, cen2018, cacfar, oscfar, modified_cacfar)
+        detector: modified_cacfar # choose detector \in (kstrongest, cen2018, cacfar, oscfar, modified_cacfar)
         minr: 2.0 # mininum detection distance
         maxr: 80.0 # maximum detection distance
         # TODO: make cart_resolution an integer mult of radar_resolution
@@ -90,7 +90,7 @@
           threshold: 2.5 # threshold for k-strongest
         cen2018:
           zq: 2.5
-          sigma: 17
+          sigma: 8
         cacfar:
           width: 101
           guard: 5
@@ -134,14 +134,16 @@
         iterations: 100    # Max number of RANSAC iterations
         max_gn_iterations: 10  # Max number of Gauss-Newton NLLS iterations
         epsilon_converge: 0.0001  # is norm(delta_w) < this, break out of Gauss-Newton
-        descriptor: basd
+        descriptor: orb
         # ORB
-        patch_size: 21  # patch size for ORB descriptor calculations
-        nndr: 0.8  # Nearest Neighbor Distance Ratio test after ORB matching
+        patch_size: 31  # patch size for ORB descriptor calculations
+        nndr: 1.0  # Nearest Neighbor Distance Ratio test after ORB matching
         # BASD
         nbins: 16
         bin_size: 1
-        visualize: true
+        visualize: false
+        filter_pc: false
+        init_icp: true
 
       icp:
         type: radar.odometry_icp

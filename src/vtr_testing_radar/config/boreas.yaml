@@ -80,7 +80,7 @@
       conversion:
         type: radar.navtech_extractor
         radar_resolution: 0.0596
-        detector: cen2018 # choose detector \in (kstrongest, cen2018, cacfar, oscfar, modified_cacfar)
+        detector: modified_cacfar # choose detector \in (kstrongest, cen2018, cacfar, oscfar, modified_cacfar)
         minr: 2.0 # mininum detection distance
         maxr: 80.0 # maximum detection distance
         # TODO: make cart_resolution an integer mult of radar_resolution
@@ -114,7 +114,7 @@
         type: radar.preprocessing
 
         voxel_downsample: true
-        frame_voxel_size: 0.01 # grid size for frame voxelization in meters
+        frame_voxel_size: 1.0 # grid size for frame voxelization in meters
 
         window_size: 3.0 # number of neighboring azimuths used to compute line normal
         aximuth_res: 0.015707963267948967 # azimuth resolution in radians (0.1 in degree), giveng M=400
@@ -129,15 +129,15 @@
     odometry:
       mcransac:
         type: radar.mcransac
-        tolerance: 0.1225  # matched with squared error less than this are inliers
-        inlier_ratio: 0.9  # ratio of inliers required for MC-RANSAC to break early
-        iterations: 100    # Max number of RANSAC iterations
-        max_gn_iterations: 10  # Max number of Gauss-Newton NLLS iterations
-        epsilon_converge: 0.0001  # is norm(delta_w) < this, break out of Gauss-Newton
+        tolerance: 0.1225 # matched with squared error less than this are inliers
+        inlier_ratio: 0.9 # ratio of inliers required for MC-RANSAC to break early
+        iterations: 100 # Max number of RANSAC iterations
+        max_gn_iterations: 10 # Max number of Gauss-Newton NLLS iterations
+        epsilon_converge: 0.0001 # is norm(delta_w) < this, break out of Gauss-Newton
         descriptor: basd
         # ORB
-        patch_size: 21  # patch size for ORB descriptor calculations
-        nndr: 0.8  # Nearest Neighbor Distance Ratio test after ORB matching
+        patch_size: 21 # patch size for ORB descriptor calculations
+        nndr: 0.8 # Nearest Neighbor Distance Ratio test after ORB matching
         # BASD
         nbins: 16
         bin_size: 1

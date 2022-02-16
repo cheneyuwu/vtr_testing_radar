@@ -17,7 +17,7 @@ ros2 run rqt_reconfigure rqt_reconfigure
 
 # Define the following environment variables VTRR=VTR RaDAR
 export VTRRROOT=${VTRROOT}/vtr_testing_radar # location of this repository CHANGE THIS!
-export VTRRDATA=/media/backup2  # dataset location (where the boreas-xxxxx folders at) CHANGE THIS!
+export VTRRDATA=${VTRDATA}/boreas/sequences  # dataset location (where the boreas-xxxxx folders at) CHANGE THIS!
 export VTRRRESULT=${VTRTEMP}/radar/boreas    # result location MAYBE CHANGE THIS!
 mkdir -p ${VTRRRESULT}
 

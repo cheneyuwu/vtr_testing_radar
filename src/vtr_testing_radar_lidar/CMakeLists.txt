@@ -30,8 +30,8 @@ ament_target_dependencies(${PROJECT_NAME}_boreas_preprocessing rclcpp std_msgs v
 add_executable(${PROJECT_NAME}_boreas_odometry src/boreas_odometry.cpp)
 ament_target_dependencies(${PROJECT_NAME}_boreas_odometry rclcpp std_msgs vtr_common vtr_logging vtr_radar_lidar)
 
-# add_executable(${PROJECT_NAME}_boreas_localization src/boreas_localization.cpp)
-# ament_target_dependencies(${PROJECT_NAME}_boreas_localization rclcpp std_msgs vtr_common vtr_logging vtr_radar_lidar)
+add_executable(${PROJECT_NAME}_boreas_localization src/boreas_localization.cpp)
+ament_target_dependencies(${PROJECT_NAME}_boreas_localization rclcpp std_msgs vtr_common vtr_logging vtr_radar_lidar)
 
 install(
   DIRECTORY include/
@@ -42,7 +42,7 @@ install(
   TARGETS
     ${PROJECT_NAME}_boreas_preprocessing
     ${PROJECT_NAME}_boreas_odometry
-    # ${PROJECT_NAME}_boreas_localization
+    ${PROJECT_NAME}_boreas_localization
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}

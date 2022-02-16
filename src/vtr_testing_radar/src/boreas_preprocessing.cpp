@@ -58,7 +58,8 @@ EdgeTransform load_T_robot_radar(const fs::path &path) {
 
 int main(int argc, char **argv) {
   rclcpp::init(argc, argv);
-  auto node = rclcpp::Node::make_shared("navigator");
+  const std::string node_name = "boreas_preprocessing";
+  auto node = rclcpp::Node::make_shared(node_name);
 
   // odometry sequence directory
   const auto odo_dir_str =
@@ -140,64 +141,132 @@ int main(int argc, char **argv) {
   std::sort(files.begin(), files.end());
   CLOG(WARNING, "test") << "Found " << files.size() << " radar data";
 
-  int frame = 0;
-  for (auto it = files.begin(); it != files.end(); ++it, ++frame) {
-    if (!rclcpp::ok()) break;
+  // thread handling variables
+  std::mutex mutex;
+  int thread_count = 1;
+  bool play = false;
+  bool terminate = false;
+  int delay = 0;
+  std::condition_variable cv_play_or_terminate;
+  std::condition_variable cv_thread_finished;
 
-    const auto timestamp = getStampFromPath(it->path().string());
-    const auto scan = cv::imread(it->path().string(), cv::IMREAD_GRAYSCALE);
+  // parameters to control the playback
+  play = node->declare_parameter<bool>("control_test.play", play);
+  rcl_interfaces::msg::ParameterDescriptor param_desc;
+  rcl_interfaces::msg::IntegerRange delay_range;
+  delay_range.from_value = 0;
+  delay_range.to_value = 100;
+  delay_range.step = 1;
+  param_desc.integer_range.emplace_back(delay_range);
+  delay = node->declare_parameter<int>("control_test.delay_millisec", delay);
+  auto parameter_client = std::make_shared<rclcpp::AsyncParametersClient>(
+      node->get_node_base_interface(), node->get_node_topics_interface(),
+      node->get_node_graph_interface(), node->get_node_services_interface());
+  auto parameter_event_sub = parameter_client->on_parameter_event(
+      [&](const rcl_interfaces::msg::ParameterEvent::SharedPtr event) {
+        std::lock_guard<std::mutex> lock(mutex);
+        for (auto &changed_parameter : event->changed_parameters) {
+          const auto &type = changed_parameter.value.type;
+          const auto &name = changed_parameter.name;
+          const auto &value = changed_parameter.value;
+          CLOG(WARNING, "test")
+              << "Received parameter change event with name: " << name;
 
-    CLOG(WARNING, "test") << "Loading radar frame " << frame
-                          << " with timestamp " << timestamp;
+          if (type == rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER) {
+            if (name == "control_test.delay_millisec") {
+              delay = value.integer_value;
+            }
+          } else if (type ==
+                     rcl_interfaces::msg::ParameterType::PARAMETER_BOOL) {
+            if (name == "control_test.play") {
+              play = value.bool_value;
+              cv_play_or_terminate.notify_one();
+            }
+          }
+        }
+      });
 
-    // publish clock for sim time
-    auto time_msg = rosgraph_msgs::msg::Clock();
-    time_msg.clock = rclcpp::Time(timestamp);
-    clock_publisher->publish(time_msg);
+  // main loop
+  std::thread process_thread([&] {
+    int frame = 0;
+    for (auto it = files.begin(); it != files.end(); ++it, ++frame) {
+      std::unique_lock lock(mutex);
 
-    // Convert message to query_data format and store into query_data
-    auto query_data = std::make_shared<radar::RadarQueryCache>();
+      cv_play_or_terminate.wait(lock, [&] { return play || terminate; });
 
-    // some modules require node for visualization
-    query_data->node = node;
+      // if the thread should be stopped, return
+      if (terminate) {
+        --thread_count;
+        cv_thread_finished.notify_all();
+        return;
+      }
 
-    // set timestamp
-    query_data->stamp.emplace(timestamp);
+      std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
-    // make up some environment info (not important)
-    tactic::EnvInfo env_info;
-    env_info.terrain_type = 0;
-    query_data->env_info.emplace(env_info);
+      // unlock the queue so that new data can be added
+      lock.unlock();
 
-    // set radar frame
-    query_data->scan.emplace(scan);
+      const auto timestamp = getStampFromPath(it->path().string());
+      const auto scan = cv::imread(it->path().string(), cv::IMREAD_GRAYSCALE);
 
-    // fill in the vehicle to sensor transform and frame name
-    query_data->T_s_r.emplace(T_radar_robot);
+      CLOG(WARNING, "test")
+          << "Loading radar frame " << frame << " with timestamp " << timestamp;
 
-    // execute the pipeline
-    tactic->input(query_data);
+      // publish clock for sim time
+      auto time_msg = rosgraph_msgs::msg::Clock();
+      time_msg.clock = rclcpp::Time(timestamp);
+      clock_publisher->publish(time_msg);
 
-    // wait for a while to look at output in rviz
-    std_msgs::msg::String status_msg;
-    status_msg.data = "Finished processing radar frame " +
-                      std::to_string(frame) + " with timestamp " +
-                      std::to_string(timestamp);
-    status_publisher->publish(status_msg);
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-  }
+      // Convert message to query_data format and store into query_data
+      auto query_data = std::make_shared<radar::RadarQueryCache>();
+
+      // some modules require node for visualization
+      query_data->node = node;
+
+      // set timestamp
+      query_data->stamp.emplace(timestamp);
+
+      // make up some environment info (not important)
+      tactic::EnvInfo env_info;
+      env_info.terrain_type = 0;
+      query_data->env_info.emplace(env_info);
+
+      // set radar frame
+      query_data->scan.emplace(scan);
+
+      // fill in the vehicle to sensor transform and frame name
+      query_data->T_s_r.emplace(T_radar_robot);
+
+      // execute the pipeline
+      tactic->input(query_data);
+
+      // wait for a while to look at output in rviz
+      std_msgs::msg::String status_msg;
+      status_msg.data = "Finished processing radar frame " +
+                        std::to_string(frame) + " with timestamp " +
+                        std::to_string(timestamp);
+      status_publisher->publish(status_msg);
+    }
+  });
+
+  rclcpp::spin(node);
+  rclcpp::shutdown();
+
+  // send the terminate signal to the worker thread
+  std::unique_lock<std::mutex> lock(mutex);
+  terminate = true;
+  cv_play_or_terminate.notify_one();
+
+  // wait for the worker thread to finish
+  cv_thread_finished.wait(lock, [&] { return thread_count == 0; });
+  if (process_thread.joinable()) process_thread.join();
 
   tactic.reset();
-
   callback.reset();
-
   pipeline.reset();
   pipeline_factory.reset();
-
   CLOG(WARNING, "test") << "Saving pose graph and reset.";
   graph->save();
   graph.reset();
   CLOG(WARNING, "test") << "Saving pose graph and reset. - DONE!";
-
-  rclcpp::shutdown();
 }

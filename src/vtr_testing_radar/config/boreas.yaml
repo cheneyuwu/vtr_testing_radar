@@ -112,6 +112,7 @@
       filtering:
         type: radar.preprocessing
 
+        voxel_downsample: true
         frame_voxel_size: 1.0 # grid size for frame voxelization in meters
 
         window_size: 3.0 # number of neighboring azimuths used to compute line normal

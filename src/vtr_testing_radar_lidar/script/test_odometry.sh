@@ -17,9 +17,3 @@ ros2 run vtr_testing_radar_lidar vtr_testing_radar_lidar_boreas_odometry \
   --params-file ${VTRRROOT}/src/vtr_testing_radar_lidar/config/boreas.yaml \
   -p data_dir:=${VTRRRESULT}/${ODO_INPUT}/${ODO_INPUT} \
   -p odo_dir:=${VTRRDATA}/${ODO_INPUT}
-# Explanation:
-#   - this script will load all radar data in time order and feed it to the preprocessing+odometry pipeline
-#   - in the rviz window, change `Global Options -> Fixed Frame` to "world", and look at the following:
-#      - undistorted point cloud: output from ICP module, which uses STEAM to undistort the point cloud
-#      - curr map odo: current map for odometry
-#      - odo path: history of robot poses at every radar frame as ros odometry msg

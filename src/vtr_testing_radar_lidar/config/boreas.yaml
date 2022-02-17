@@ -3,7 +3,7 @@
     ############ system configuration ############
     # Data logging
     log_to_file: true
-    log_debug: true
+    log_debug: false
     log_enabled: [
         ## ADD LOGGER IDS HERE
         # tactic
@@ -15,12 +15,12 @@
         # pose graph
         # "pose_graph",
         # pipeline specific
-        # "radar.pipeline",
+        "radar.pipeline",
         # "radar.navtech_extractor",
-        "radar.preprocessing",
-        # "radar.odometry_icp",
-        # "radar.localization_icp",
+        # "radar.preprocessing",
         # "radar.mcransac",
+        # "radar.odometry_icp",
+        # "radar_lidar.localization_icp",
       ]
 
     ############ tactic configuration ############
@@ -113,8 +113,8 @@
       filtering:
         type: radar.preprocessing
 
-        voxel_downsample: true
-        frame_voxel_size: 0.01 # grid size for frame voxelization in meters
+        voxel_downsample: false
+        frame_voxel_size: 1.0 # grid size for frame voxelization in meters
 
         window_size: 3.0 # number of neighboring azimuths used to compute line normal
         aximuth_res: 0.015707963267948967 # azimuth resolution in radians (0.1 in degree), giveng M=400
@@ -205,14 +205,18 @@
       recall:
         type: lidar.localization_map_recall
 
-        map_version: "point_map"
+        map_version: "multi_exp_point_map"
 
         visualize: true
 
       icp:
-        type: lidar.localization_icp_v3 ## TODO: change this!!!!!!!!!!!
+        type: radar_lidar.localization_icp
 
         use_pose_prior: false
+
+        # lidar map projection parameters
+        elevation_threshold: 0.05 # elevation threshold in meters
+        normal_threshold: 0.5 # normal threshold in meters (assumed to be z-axis)
 
         # ICP parameters
         num_threads: 1
@@ -232,6 +236,8 @@
 
         # threshold
         min_matched_ratio: 0.0
+
+        visualize: true
 
       memory:
         type: "graph_mem_manager"

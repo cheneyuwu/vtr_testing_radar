@@ -1,4 +1,5 @@
 #include <filesystem>
+#include <random>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
@@ -18,6 +19,17 @@ using namespace vtr::common;
 using namespace vtr::logging;
 using namespace vtr::tactic;
 
+std::string random_string(std::size_t length) {
+  const std::string CHARACTERS = "abcdefghijklmnopqrstuvwxyz";
+  std::random_device random_device;
+  std::mt19937 generator(random_device());
+  std::uniform_int_distribution<> distribution(0, CHARACTERS.size() - 1);
+  std::string result;
+  for (std::size_t i = 0; i < length; ++i)
+    result += CHARACTERS[distribution(generator)];
+  return result;
+}
+
 int64_t getStampFromPath(const std::string &path) {
   std::vector<std::string> parts;
   boost::split(parts, path, boost::is_any_of("/"));
@@ -29,8 +41,8 @@ int64_t getStampFromPath(const std::string &path) {
 
 EdgeTransform load_T_robot_radar(const fs::path &path) {
 #if true
-  std::ifstream ifs1(path / "T_applanix_lidar.txt", std::ios::in);
-  std::ifstream ifs2(path / "T_radar_lidar.txt", std::ios::in);
+  std::ifstream ifs1(path / "calib" / "T_applanix_lidar.txt", std::ios::in);
+  std::ifstream ifs2(path / "calib" / "T_radar_lidar.txt", std::ios::in);
 
   Eigen::Matrix4d T_applanix_lidar_mat;
   for (size_t row = 0; row < 4; row++)
@@ -58,7 +70,7 @@ EdgeTransform load_T_robot_radar(const fs::path &path) {
 
 int main(int argc, char **argv) {
   rclcpp::init(argc, argv);
-  const std::string node_name = "boreas_preprocessing";
+  const std::string node_name = "boreas_preprocessing_" + random_string(10);
   auto node = rclcpp::Node::make_shared(node_name);
 
   // odometry sequence directory
@@ -119,7 +131,7 @@ int main(int argc, char **argv) {
   std::string robot_frame = "robot";
   std::string radar_frame = "radar";
 
-  const auto T_robot_radar = load_T_robot_radar(odo_dir / "calib");
+  const auto T_robot_radar = load_T_robot_radar(odo_dir);
   const auto T_radar_robot = T_robot_radar.inverse();
   CLOG(WARNING, "test") << "Transform from " << robot_frame << " to "
                         << radar_frame << " has been set to" << T_radar_robot;
@@ -142,7 +154,7 @@ int main(int argc, char **argv) {
   CLOG(WARNING, "test") << "Found " << files.size() << " radar data";
 
   // thread handling variables
-  bool play = false;
+  bool play = true;
   bool terminate = false;
   int delay = 0;
 

@@ -3,7 +3,7 @@
     ############ system configuration ############
     # Data logging
     log_to_file: true
-    log_debug: true
+    log_debug: false
     log_enabled: [
         ## ADD LOGGER IDS HERE
         # tactic
@@ -15,12 +15,12 @@
         # pose graph
         # "pose_graph",
         # pipeline specific
-        # "radar.pipeline",
+        "radar.pipeline",
         # "radar.navtech_extractor",
         # "radar.preprocessing",
+        # "radar.mcransac",
         # "radar.odometry_icp",
         # "radar.localization_icp",
-        "radar.mcransac",
       ]
 
     ############ tactic configuration ############
@@ -62,7 +62,7 @@
 
       odometry: [
           # odometry and mapping thread modules
-          "mcransac",
+          # "mcransac",
           "icp",
           "mapping",
           "keyframe_test",
@@ -113,7 +113,7 @@
       filtering:
         type: radar.preprocessing
 
-        voxel_downsample: true
+        voxel_downsample: false
         frame_voxel_size: 1.0 # grid size for frame voxelization in meters
 
         window_size: 3.0 # number of neighboring azimuths used to compute line normal

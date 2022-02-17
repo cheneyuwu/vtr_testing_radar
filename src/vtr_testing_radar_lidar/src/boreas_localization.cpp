@@ -1,4 +1,5 @@
 #include <filesystem>
+#include <random>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
@@ -18,6 +19,17 @@ using namespace vtr::common;
 using namespace vtr::logging;
 using namespace vtr::tactic;
 
+std::string random_string(std::size_t length) {
+  const std::string CHARACTERS = "abcdefghijklmnopqrstuvwxyz";
+  std::random_device random_device;
+  std::mt19937 generator(random_device());
+  std::uniform_int_distribution<> distribution(0, CHARACTERS.size() - 1);
+  std::string result;
+  for (std::size_t i = 0; i < length; ++i)
+    result += CHARACTERS[distribution(generator)];
+  return result;
+}
+
 int64_t getStampFromPath(const std::string &path) {
   std::vector<std::string> parts;
   boost::split(parts, path, boost::is_any_of("/"));
@@ -27,10 +39,26 @@ int64_t getStampFromPath(const std::string &path) {
   return time1 * 1000;
 }
 
+EdgeTransform load_T_robot_lidar(const fs::path &path) {
+  std::ifstream ifs(path / "calib" / "T_applanix_lidar.txt", std::ios::in);
+
+  Eigen::Matrix4d T_applanix_lidar_mat;
+  for (size_t row = 0; row < 4; row++)
+    for (size_t col = 0; col < 4; col++) ifs >> T_applanix_lidar_mat(row, col);
+
+  Eigen::Matrix4d yfwd2xfwd;
+  yfwd2xfwd << 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1;
+
+  EdgeTransform T_robot_lidar(Eigen::Matrix4d(yfwd2xfwd * T_applanix_lidar_mat),
+                              Eigen::Matrix<double, 6, 6>::Zero());
+
+  return T_robot_lidar;
+}
+
 EdgeTransform load_T_robot_radar(const fs::path &path) {
 #if true
-  std::ifstream ifs1(path / "T_applanix_lidar.txt", std::ios::in);
-  std::ifstream ifs2(path / "T_radar_lidar.txt", std::ios::in);
+  std::ifstream ifs1(path / "calib" / "T_applanix_lidar.txt", std::ios::in);
+  std::ifstream ifs2(path / "calib" / "T_radar_lidar.txt", std::ios::in);
 
   Eigen::Matrix4d T_applanix_lidar_mat;
   for (size_t row = 0; row < 4; row++)
@@ -78,6 +106,30 @@ Eigen::Matrix3d rpy2rot(const double &r, const double &p, const double &y) {
   return toRoll(r) * toPitch(p) * toYaw(y);
 }
 
+EdgeTransform load_T_enu_lidar_init(const fs::path &path) {
+  std::ifstream ifs(path / "applanix" / "lidar_poses.csv", std::ios::in);
+
+  std::string header;
+  std::getline(ifs, header);
+
+  std::string first_pose;
+  std::getline(ifs, first_pose);
+
+  std::stringstream ss{first_pose};
+  std::vector<double> gt;
+  for (std::string str; std::getline(ss, str, ',');)
+    gt.push_back(std::stod(str));
+
+  Eigen::Matrix4d T_mat = Eigen::Matrix4d::Identity();
+  T_mat.block<3, 3>(0, 0) = rpy2rot(gt[7], gt[8], gt[9]);
+  T_mat.block<3, 1>(0, 3) << gt[1], gt[2], gt[3];
+
+  EdgeTransform T(T_mat);
+  T.setZeroCovariance();
+
+  return T;
+}
+
 EdgeTransform load_T_enu_radar_init(const fs::path &path) {
   std::ifstream ifs(path / "applanix" / "radar_poses.csv", std::ios::in);
 
@@ -94,8 +146,7 @@ EdgeTransform load_T_enu_radar_init(const fs::path &path) {
 
   Eigen::Matrix4d T_mat = Eigen::Matrix4d::Identity();
   T_mat.block<3, 3>(0, 0) = rpy2rot(gt[7], gt[8], gt[9]);
-  /// \note radar ground truth has y axis inverted!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  T_mat.block<3, 1>(0, 3) << gt[1], -gt[2], gt[3];
+  T_mat.block<3, 1>(0, 3) << gt[1], gt[2], gt[3];
 
   EdgeTransform T(T_mat);
   T.setZeroCovariance();
@@ -105,7 +156,7 @@ EdgeTransform load_T_enu_radar_init(const fs::path &path) {
 
 int main(int argc, char **argv) {
   rclcpp::init(argc, argv);
-  const std::string node_name = "boreas_localization";
+  const std::string node_name = "boreas_localization_" + random_string(10);
   auto node = rclcpp::Node::make_shared(node_name);
 
   // odometry sequence directory
@@ -187,15 +238,16 @@ int main(int argc, char **argv) {
   }
   CLOG(WARNING, "test") << ss.str();
 
+  /// NOTE: odometry is teach, localization is repeat
   const auto T_loc_odo_init = [&]() {
-    const auto T_robot_radar_odo = load_T_robot_radar(odo_dir);
-    const auto T_enu_radar_odo = load_T_enu_radar_init(odo_dir);
+    const auto T_robot_lidar_odo = load_T_robot_lidar(odo_dir);
+    const auto T_enu_lidar_odo = load_T_enu_lidar_init(odo_dir);
 
     const auto T_robot_radar_loc = load_T_robot_radar(loc_dir);
     const auto T_enu_radar_loc = load_T_enu_radar_init(loc_dir);
 
-    return T_robot_radar_loc * T_enu_radar_loc.inverse() * T_enu_radar_odo *
-           T_robot_radar_odo.inverse();
+    return T_robot_radar_loc * T_enu_radar_loc.inverse() * T_enu_lidar_odo *
+           T_robot_lidar_odo.inverse();
   }();
   CLOG(WARNING, "test")
       << "Transform from localization to odometry has been set to "
@@ -207,7 +259,7 @@ int main(int argc, char **argv) {
   std::string robot_frame = "robot";
   std::string radar_frame = "radar";
 
-  const auto T_robot_radar = load_T_robot_radar(odo_dir / "calib");
+  const auto T_robot_radar = load_T_robot_radar(odo_dir);
   const auto T_radar_robot = T_robot_radar.inverse();
   CLOG(WARNING, "test") << "Transform from " << robot_frame << " to "
                         << radar_frame << " has been set to" << T_radar_robot;
@@ -230,7 +282,7 @@ int main(int argc, char **argv) {
   CLOG(WARNING, "test") << "Found " << files.size() << " radar data";
 
   // thread handling variables
-  bool play = false;
+  bool play = true;
   bool terminate = false;
   int delay = 0;
 

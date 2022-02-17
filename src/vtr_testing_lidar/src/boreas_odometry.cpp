@@ -72,7 +72,8 @@ EdgeTransform load_T_robot_lidar(const fs::path &path) {
 
 int main(int argc, char **argv) {
   rclcpp::init(argc, argv);
-  auto node = rclcpp::Node::make_shared("navigator");
+  const std::string node_name = "boreas_odometry";
+  auto node = rclcpp::Node::make_shared(node_name);
 
   // odometry sequence directory
   const auto odo_dir_str =
@@ -155,10 +156,61 @@ int main(int argc, char **argv) {
   std::sort(files.begin(), files.end());
   CLOG(WARNING, "test") << "Found " << files.size() << " lidar data";
 
-  int frame = 0;
-  for (auto it = files.begin(); it != files.end(); ++it, ++frame) {
-    if (!rclcpp::ok()) break;
+  // thread handling variables
+  bool play = false;
+  bool terminate = false;
+  int delay = 0;
 
+  // parameters to control the playback
+  // clang-format off
+  play = node->declare_parameter<bool>("control_test.play", play);
+  terminate = node->declare_parameter<bool>("control_test.terminate", terminate);
+  // clang-format on
+  rcl_interfaces::msg::ParameterDescriptor param_desc;
+  rcl_interfaces::msg::IntegerRange delay_range;
+  delay_range.from_value = 0;
+  delay_range.to_value = 100;
+  delay_range.step = 1;
+  param_desc.integer_range.emplace_back(delay_range);
+  delay = node->declare_parameter<int>("control_test.delay_millisec", delay);
+  auto parameter_client = std::make_shared<rclcpp::AsyncParametersClient>(
+      node->get_node_base_interface(), node->get_node_topics_interface(),
+      node->get_node_graph_interface(), node->get_node_services_interface());
+  auto parameter_event_sub = parameter_client->on_parameter_event(
+      [&](const rcl_interfaces::msg::ParameterEvent::SharedPtr event) {
+        for (auto &changed_parameter : event->changed_parameters) {
+          const auto &type = changed_parameter.value.type;
+          const auto &name = changed_parameter.name;
+          const auto &value = changed_parameter.value;
+          CLOG(WARNING, "test")
+              << "Received parameter change event with name: " << name;
+
+          if (type == rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER) {
+            if (name == "control_test.delay_millisec") {
+              delay = value.integer_value;
+            }
+          } else if (type ==
+                     rcl_interfaces::msg::ParameterType::PARAMETER_BOOL) {
+            if (name == "control_test.play") {
+              play = value.bool_value;
+            } else if (name == "control_test.terminate") {
+              terminate = value.bool_value;
+            }
+          }
+        }
+      });
+
+  // main loop
+  int frame = 0;
+  auto it = files.begin();
+  while (it != files.end()) {
+    if (!rclcpp::ok()) break;
+    rclcpp::spin_some(node);
+    if (terminate) break;
+    if (!play) continue;
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+
+    ///
     const auto [timestamp, points] = load_lidar(it->path().string());
 
     CLOG(WARNING, "test") << "Loading lidar frame " << frame
@@ -192,26 +244,24 @@ int main(int argc, char **argv) {
     // execute the pipeline
     tactic->input(query_data);
 
-    // wait for a while to look at output in rviz
     std_msgs::msg::String status_msg;
     status_msg.data = "Finished processing lidar frame " +
                       std::to_string(frame) + " with timestamp " +
                       std::to_string(timestamp);
     status_publisher->publish(status_msg);
-    // std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    ++it;
+    ++frame;
   }
 
+  rclcpp::shutdown();
+
   tactic.reset();
-
   callback.reset();
-
   pipeline.reset();
   pipeline_factory.reset();
-
   CLOG(WARNING, "test") << "Saving pose graph and reset.";
   graph->save();
   graph.reset();
   CLOG(WARNING, "test") << "Saving pose graph and reset. - DONE!";
-
-  rclcpp::shutdown();
 }

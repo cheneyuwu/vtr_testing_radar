@@ -13,6 +13,19 @@ from pylgmath import se3op
 from pyboreas import BoreasDataset
 
 
+def get_inverse_tf(T):
+  """Returns the inverse of a given 4x4 homogeneous transform.
+    Args:
+        T (np.ndarray): 4x4 transformation matrix
+    Returns:
+        np.ndarray: inv(T)
+    """
+  T2 = T.copy()
+  T2[:3, :3] = T2[:3, :3].transpose()
+  T2[:3, 3:] = -1 * T2[:3, :3] @ T2[:3, 3:]
+  return T2
+
+
 class BagFileParser():
 
   def __init__(self, bag_file):
@@ -54,7 +67,7 @@ def main(dataset_dir, result_dir):
 
   T_applanix_lidar = dataset_odo.sequences[0].calib.T_applanix_lidar
   T_radar_lidar = dataset_odo.sequences[0].calib.T_radar_lidar
-  T_applanix_radar = T_applanix_lidar @ npla.inv(T_radar_lidar)
+  T_applanix_radar = T_applanix_lidar @ get_inverse_tf(T_radar_lidar)
   T_robot_applanix = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
   T_robot_radar = T_robot_applanix @ T_applanix_radar
 
@@ -69,7 +82,7 @@ def main(dataset_dir, result_dir):
     T_w_r_vec = np.array(message[1].t_world_robot.xi)[..., None]
     T_w_r = se3op.vec2tran(T_w_r_vec)
     T_w_a = T_w_r @ T_robot_radar
-    T_a_w_res = npla.inv(T_w_a).flatten().tolist()[:12]
+    T_a_w_res = get_inverse_tf(T_w_a).flatten().tolist()[:12]
     result.append([timestamp] + T_a_w_res)
 
   output_dir = osp.join(result_dir, "odometry_result")

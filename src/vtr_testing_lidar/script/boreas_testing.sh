@@ -5,6 +5,11 @@ exit 1
 source /opt/ros/galactic/setup.bash               # source the ROS environment
 ros2 run rviz2 rviz2 -d ${VTRSRC}/rviz/lidar.rviz # launch rviz
 
+## Then in another terminal, launch rqt_reconfigure for control
+## current supported dynamic reconfigure parameters: control_test.play and controL_test.delay_millisec
+source /opt/ros/galactic/setup.bash
+ros2 run rqt_reconfigure rqt_reconfigure
+
 ############################################################
 #### Now start another terminal and run testing scripts ####
 

@@ -13,6 +13,19 @@ from pyboreas import BoreasDataset
 from pylgmath import se3op
 
 
+def get_inverse_tf(T):
+  """Returns the inverse of a given 4x4 homogeneous transform.
+    Args:
+        T (np.ndarray): 4x4 transformation matrix
+    Returns:
+        np.ndarray: inv(T)
+    """
+  T2 = T.copy()
+  T2[:3, :3] = T2[:3, :3].transpose()
+  T2[:3, 3:] = -1 * T2[:3, :3] @ T2[:3, 3:]
+  return T2
+
+
 class BagFileParser():
 
   def __init__(self, bag_file):
@@ -41,7 +54,7 @@ class BagFileParser():
 def main(dataset_dir, result_dir):
   result_dir = osp.normpath(result_dir)
   odo_input = osp.basename(result_dir)
-  loc_inputs = [i for i in os.listdir(result_dir) if (i != odo_input and i.startswith("boreas") and osp.isdir(i))]
+  loc_inputs = [i for i in os.listdir(result_dir) if (i != odo_input and i.startswith("boreas"))]
   loc_inputs.sort()
   print("Result Directory:", result_dir)
   print("Odometry Run:", odo_input)
@@ -59,7 +72,7 @@ def main(dataset_dir, result_dir):
     yfwd2xfwd = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
     T_robot_lidar_odo = yfwd2xfwd @ sequence.calib.T_applanix_lidar
     # T_robot_lidar_odo = sequence.calib.T_applanix_lidar
-    T_lidar_robot_odo = npla.inv(T_robot_lidar_odo)
+    T_lidar_robot_odo = get_inverse_tf(T_robot_lidar_odo)
 
     # build dictionary
     precision = 1e7  # divide by this number to ensure always find the timestamp
@@ -80,7 +93,7 @@ def main(dataset_dir, result_dir):
       yfwd2xfwd = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
       T_robot_lidar_loc = yfwd2xfwd @ sequence.calib.T_applanix_lidar
       # T_robot_lidar_loc = sequence.calib.T_applanix_lidar
-      T_lidar_robot_loc = npla.inv(T_robot_lidar_loc)
+      T_lidar_robot_loc = get_inverse_tf(T_robot_lidar_loc)
 
       # build dictionary
       precision = 1e7  # divide by this number to ensure always find the timestamp
@@ -104,6 +117,16 @@ def main(dataset_dir, result_dir):
     result = []
     errors = np.empty((len(messages), 6))
     for i, message in enumerate(messages):
+
+      test_seq_timestamp = int(int(message[1].timestamp) / 1000)
+      map_seq_timestamp = int(int(message[1].vertex_timestamp) / 1000)
+      T_test_map_vec = np.array(message[1].t_robot_vertex.xi)[..., None]
+      T_test_map = se3op.vec2tran(T_test_map_vec)
+      T_test_map_in_lidar = T_lidar_robot_loc @ T_test_map @ T_robot_lidar_odo
+      T_map_test_in_lidar = get_inverse_tf(T_test_map_in_lidar)
+      T_map_test_in_lidar_res = T_map_test_in_lidar.flatten().tolist()[:12]
+      result.append([test_seq_timestamp, map_seq_timestamp] + T_map_test_in_lidar_res)
+
       if not int(message[1].timestamp / precision) in ground_truth_poses_loc.keys():
         print("WARNING: time stamp not found 1: ", int(message[1].timestamp / precision))
         continue
@@ -116,20 +139,11 @@ def main(dataset_dir, result_dir):
       T_test_map_vec = np.array(message[1].t_robot_vertex.xi)[..., None]
       T_test_map = se3op.vec2tran(T_test_map_vec)
       T_test_map_in_lidar = T_lidar_robot_loc @ T_test_map @ T_robot_lidar_odo
-      T_map_test_in_lidar = npla.inv(T_test_map_in_lidar)
-      T_test_map_in_lidar_gt = npla.inv(
+      T_map_test_in_lidar = get_inverse_tf(T_test_map_in_lidar)
+      T_test_map_in_lidar_gt = get_inverse_tf(
           ground_truth_poses_loc[test_seq_timestamp]) @ ground_truth_poses_odo[map_seq_timestamp]
       # compute error
       errors[i, :] = se3op.tran2vec(T_map_test_in_lidar @ T_test_map_in_lidar_gt).flatten()
-
-      test_seq_timestamp = int(int(message[1].timestamp) / 1000)
-      map_seq_timestamp = int(int(message[1].vertex_timestamp) / 1000)
-      T_test_map_vec = np.array(message[1].t_robot_vertex.xi)[..., None]
-      T_test_map = se3op.vec2tran(T_test_map_vec)
-      T_test_map_in_lidar = T_lidar_robot_loc @ T_test_map @ T_robot_lidar_odo
-      T_map_test_in_lidar = npla.inv(T_test_map_in_lidar)
-      T_map_test_in_lidar_res = T_map_test_in_lidar.flatten().tolist()[:12]
-      result.append([test_seq_timestamp, map_seq_timestamp] + T_map_test_in_lidar_res)
 
     print(np.mean(np.abs(errors), axis=0))
 

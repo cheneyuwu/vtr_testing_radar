@@ -1,4 +1,5 @@
 #include <filesystem>
+#include <random>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
@@ -17,6 +18,17 @@ using namespace vtr;
 using namespace vtr::common;
 using namespace vtr::logging;
 using namespace vtr::tactic;
+
+std::string random_string(std::size_t length) {
+  const std::string CHARACTERS = "abcdefghijklmnopqrstuvwxyz";
+  std::random_device random_device;
+  std::mt19937 generator(random_device());
+  std::uniform_int_distribution<> distribution(0, CHARACTERS.size() - 1);
+  std::string result;
+  for (std::size_t i = 0; i < length; ++i)
+    result += CHARACTERS[distribution(generator)];
+  return result;
+}
 
 float getFloatFromByteArray(char *byteArray, uint index) {
   return *((float *)(byteArray + index));
@@ -118,7 +130,7 @@ EdgeTransform load_T_enu_lidar_init(const fs::path &path) {
 
 int main(int argc, char **argv) {
   rclcpp::init(argc, argv);
-  const std::string node_name = "boreas_localization";
+  const std::string node_name = "boreas_localization_" + random_string(10);
   auto node = rclcpp::Node::make_shared(node_name);
 
   // odometry sequence directory
@@ -200,6 +212,7 @@ int main(int argc, char **argv) {
   }
   CLOG(WARNING, "test") << ss.str();
 
+  /// NOTE: odometry is teach, localization is repeat
   const auto T_loc_odo_init = [&]() {
     const auto T_robot_lidar_odo = load_T_robot_lidar(odo_dir);
     const auto T_enu_lidar_odo = load_T_enu_lidar_init(odo_dir);
@@ -243,7 +256,7 @@ int main(int argc, char **argv) {
   CLOG(WARNING, "test") << "Found " << files.size() << " lidar data";
 
   // thread handling variables
-  bool play = false;
+  bool play = true;
   bool terminate = false;
   int delay = 0;
 

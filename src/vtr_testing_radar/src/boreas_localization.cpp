@@ -1,4 +1,5 @@
 #include <filesystem>
+#include <random>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
@@ -18,6 +19,17 @@ using namespace vtr::common;
 using namespace vtr::logging;
 using namespace vtr::tactic;
 
+std::string random_string(std::size_t length) {
+  const std::string CHARACTERS = "abcdefghijklmnopqrstuvwxyz";
+  std::random_device random_device;
+  std::mt19937 generator(random_device());
+  std::uniform_int_distribution<> distribution(0, CHARACTERS.size() - 1);
+  std::string result;
+  for (std::size_t i = 0; i < length; ++i)
+    result += CHARACTERS[distribution(generator)];
+  return result;
+}
+
 int64_t getStampFromPath(const std::string &path) {
   std::vector<std::string> parts;
   boost::split(parts, path, boost::is_any_of("/"));
@@ -28,9 +40,9 @@ int64_t getStampFromPath(const std::string &path) {
 }
 
 EdgeTransform load_T_robot_radar(const fs::path &path) {
-#if false
-  std::ifstream ifs1(path / "T_applanix_lidar.txt", std::ios::in);
-  std::ifstream ifs2(path / "T_radar_lidar.txt", std::ios::in);
+#if true
+  std::ifstream ifs1(path / "calib" / "T_applanix_lidar.txt", std::ios::in);
+  std::ifstream ifs2(path / "calib" / "T_radar_lidar.txt", std::ios::in);
 
   Eigen::Matrix4d T_applanix_lidar_mat;
   for (size_t row = 0; row < 4; row++)
@@ -94,8 +106,7 @@ EdgeTransform load_T_enu_radar_init(const fs::path &path) {
 
   Eigen::Matrix4d T_mat = Eigen::Matrix4d::Identity();
   T_mat.block<3, 3>(0, 0) = rpy2rot(gt[7], gt[8], gt[9]);
-  /// \note radar ground truth has y axis inverted!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  T_mat.block<3, 1>(0, 3) << gt[1], -gt[2], gt[3];
+  T_mat.block<3, 1>(0, 3) << gt[1], gt[2], gt[3];
 
   EdgeTransform T(T_mat);
   T.setZeroCovariance();
@@ -105,7 +116,7 @@ EdgeTransform load_T_enu_radar_init(const fs::path &path) {
 
 int main(int argc, char **argv) {
   rclcpp::init(argc, argv);
-  const std::string node_name = "boreas_localization";
+  const std::string node_name = "boreas_localization_" + random_string(10);
   auto node = rclcpp::Node::make_shared(node_name);
 
   // odometry sequence directory
@@ -187,6 +198,7 @@ int main(int argc, char **argv) {
   }
   CLOG(WARNING, "test") << ss.str();
 
+  /// NOTE: odometry is teach, localization is repeat
   const auto T_loc_odo_init = [&]() {
     const auto T_robot_radar_odo = load_T_robot_radar(odo_dir);
     const auto T_enu_radar_odo = load_T_enu_radar_init(odo_dir);
@@ -207,7 +219,7 @@ int main(int argc, char **argv) {
   std::string robot_frame = "robot";
   std::string radar_frame = "radar";
 
-  const auto T_robot_radar = load_T_robot_radar(odo_dir / "calib");
+  const auto T_robot_radar = load_T_robot_radar(odo_dir);
   const auto T_radar_robot = T_robot_radar.inverse();
   CLOG(WARNING, "test") << "Transform from " << robot_frame << " to "
                         << radar_frame << " has been set to" << T_radar_robot;
@@ -230,16 +242,15 @@ int main(int argc, char **argv) {
   CLOG(WARNING, "test") << "Found " << files.size() << " radar data";
 
   // thread handling variables
-  std::mutex mutex;
-  int thread_count = 1;
-  bool play = false;
+  bool play = true;
   bool terminate = false;
   int delay = 0;
-  std::condition_variable cv_play_or_terminate;
-  std::condition_variable cv_thread_finished;
 
   // parameters to control the playback
+  // clang-format off
   play = node->declare_parameter<bool>("control_test.play", play);
+  terminate = node->declare_parameter<bool>("control_test.terminate", terminate);
+  // clang-format on
   rcl_interfaces::msg::ParameterDescriptor param_desc;
   rcl_interfaces::msg::IntegerRange delay_range;
   delay_range.from_value = 0;
@@ -252,7 +263,6 @@ int main(int argc, char **argv) {
       node->get_node_graph_interface(), node->get_node_services_interface());
   auto parameter_event_sub = parameter_client->on_parameter_event(
       [&](const rcl_interfaces::msg::ParameterEvent::SharedPtr event) {
-        std::lock_guard<std::mutex> lock(mutex);
         for (auto &changed_parameter : event->changed_parameters) {
           const auto &type = changed_parameter.value.type;
           const auto &name = changed_parameter.name;
@@ -268,85 +278,69 @@ int main(int argc, char **argv) {
                      rcl_interfaces::msg::ParameterType::PARAMETER_BOOL) {
             if (name == "control_test.play") {
               play = value.bool_value;
-              cv_play_or_terminate.notify_one();
+            } else if (name == "control_test.terminate") {
+              terminate = value.bool_value;
             }
           }
         }
       });
 
   // main loop
-  std::thread process_thread([&] {
-    int frame = 0;
-    for (auto it = files.begin(); it != files.end(); ++it, ++frame) {
-      std::unique_lock lock(mutex);
+  int frame = 0;
+  auto it = files.begin();
+  while (it != files.end()) {
+    if (!rclcpp::ok()) break;
+    rclcpp::spin_some(node);
+    if (terminate) break;
+    if (!play) continue;
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
-      cv_play_or_terminate.wait(lock, [&] { return play || terminate; });
+    ///
+    const auto timestamp = getStampFromPath(it->path().string());
+    const auto scan = cv::imread(it->path().string(), cv::IMREAD_GRAYSCALE);
 
-      // if the thread should be stopped, return
-      if (terminate) {
-        --thread_count;
-        cv_thread_finished.notify_all();
-        return;
-      }
+    CLOG(WARNING, "test") << "Loading radar frame " << frame
+                          << " with timestamp " << timestamp;
 
-      std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    // publish clock for sim time
+    auto time_msg = rosgraph_msgs::msg::Clock();
+    time_msg.clock = rclcpp::Time(timestamp);
+    clock_publisher->publish(time_msg);
 
-      // unlock the queue so that new data can be added
-      lock.unlock();
+    // Convert message to query_data format and store into query_data
+    auto query_data = std::make_shared<radar::RadarQueryCache>();
 
-      const auto timestamp = getStampFromPath(it->path().string());
-      const auto scan = cv::imread(it->path().string(), cv::IMREAD_GRAYSCALE);
+    // some modules require node for visualization
+    query_data->node = node;
 
-      CLOG(WARNING, "test")
-          << "Loading radar frame " << frame << " with timestamp " << timestamp;
+    // set timestamp
+    query_data->stamp.emplace(timestamp);
 
-      // publish clock for sim time
-      auto time_msg = rosgraph_msgs::msg::Clock();
-      time_msg.clock = rclcpp::Time(timestamp);
-      clock_publisher->publish(time_msg);
+    // make up some environment info (not important)
+    tactic::EnvInfo env_info;
+    env_info.terrain_type = 0;
+    query_data->env_info.emplace(env_info);
 
-      // Convert message to query_data format and store into query_data
-      auto query_data = std::make_shared<radar::RadarQueryCache>();
+    // set radar frame
+    query_data->scan.emplace(scan);
 
-      // some modules require node for visualization
-      query_data->node = node;
+    // fill in the vehicle to sensor transform and frame name
+    query_data->T_s_r.emplace(T_radar_robot);
 
-      // set timestamp
-      query_data->stamp.emplace(timestamp);
+    // execute the pipeline
+    tactic->input(query_data);
 
-      // make up some environment info (not important)
-      tactic::EnvInfo env_info;
-      env_info.terrain_type = 0;
-      query_data->env_info.emplace(env_info);
+    std_msgs::msg::String status_msg;
+    status_msg.data = "Finished processing radar frame " +
+                      std::to_string(frame) + " with timestamp " +
+                      std::to_string(timestamp);
+    status_publisher->publish(status_msg);
 
-      // set radar frame
-      query_data->scan.emplace(scan);
+    ++it;
+    ++frame;
+  }
 
-      // fill in the vehicle to sensor transform and frame name
-      query_data->T_s_r.emplace(T_radar_robot);
-
-      // execute the pipeline
-      tactic->input(query_data);
-
-      std_msgs::msg::String status_msg;
-      status_msg.data = "Finished processing radar frame " +
-                        std::to_string(frame) + " with timestamp " +
-                        std::to_string(timestamp);
-      status_publisher->publish(status_msg);
-    }
-  });
-
-  rclcpp::spin(node);
   rclcpp::shutdown();
-
-  // send the terminate signal to the worker thread
-  std::unique_lock<std::mutex> lock(mutex);
-  terminate = true;
-  cv_play_or_terminate.notify_one();
-
-  // wait for the worker thread to finish
-  cv_thread_finished.wait(lock, [&] { return thread_count == 0; });
-  if (process_thread.joinable()) process_thread.join();
 
   tactic.reset();
   callback.reset();

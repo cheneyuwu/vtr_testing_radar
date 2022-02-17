@@ -11,9 +11,9 @@ echo "Running preprocessing on sequence ${ODO_INPUT}, storing result to ${VTRRRE
 # Source the VTR environment with the testing package
 source ${VTRRROOT}/install/setup.bash
 # --prefix 'gdb -ex run --args'
-ros2 run vtr_testing_radar vtr_testing_radar_boreas_preprocessing \
+ros2 run vtr_testing_radar_lidar vtr_testing_radar_lidar_boreas_preprocessing \
   --ros-args -p use_sim_time:=true \
   -r __ns:=/vtr \
-  --params-file ${VTRRROOT}/src/vtr_testing_radar/config/boreas.yaml \
+  --params-file ${VTRRROOT}/src/vtr_testing_radar_lidar/config/boreas.yaml \
   -p data_dir:=${VTRRRESULT}/${ODO_INPUT}/${ODO_INPUT} \
   -p odo_dir:=${VTRRDATA}/${ODO_INPUT}

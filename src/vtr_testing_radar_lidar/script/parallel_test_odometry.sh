@@ -21,13 +21,13 @@ SEQUENCES=(
 GROUPSIZE=20
 
 # define the following environment variables VTRR=VTR RaDAR
-export VTRRROOT=${VTRROOT}/vtr_testing_radar # location of this repository CHANGE THIS!
-export VTRRDATA=${VTRDATA}/boreas/sequences  # dataset location (where the boreas-xxxxx folders at) CHANGE THIS!
-export VTRRRESULT=${VTRTEMP}/radar/boreas    # result location MAYBE CHANGE THIS!
+export VTRRROOT=${VTRROOT}/vtr_testing_radar    # location of this repository CHANGE THIS!
+export VTRRDATA=${VTRDATA}/boreas/sequences     # dataset location (where the boreas-xxxxx folders at) CHANGE THIS!
+export VTRRRESULT=${VTRTEMP}/radar_lidar/boreas # result location MAYBE CHANGE THIS!
 mkdir -p ${VTRRRESULT}
 
-ODOMETRY_SCRIPT="${VTRRROOT}/src/vtr_testing_radar/script/test_odometry.sh"
-ODOMETRY_EVAL_SCRIPT="${VTRRROOT}/src/vtr_testing_radar/script/test_odometry_eval.sh"
+ODOMETRY_SCRIPT="${VTRRROOT}/src/vtr_testing_radar_lidar/script/test_odometry.sh"
+ODOMETRY_EVAL_SCRIPT="${VTRRROOT}/src/vtr_testing_radar_lidar/script/test_odometry_eval.sh"
 
 declare -A pids
 

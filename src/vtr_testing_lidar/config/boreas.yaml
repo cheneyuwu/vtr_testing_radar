@@ -15,10 +15,10 @@
         # pose graph
         # "pose_graph",
         # pipeline specific
-        # "lidar.pipeline",
+        "lidar.pipeline",
         # "lidar.velodyne_converter",
         # "lidar.preprocessing",
-        "lidar.odometry_icp",
+        # "lidar.odometry_icp",
         # "lidar.odometry_map_merging",
         # "lidar.keyframe_test",
         # "lidar.localization_map_recall",

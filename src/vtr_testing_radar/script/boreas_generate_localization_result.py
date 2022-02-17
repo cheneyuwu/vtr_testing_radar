@@ -13,6 +13,19 @@ from pyboreas import BoreasDataset
 from pylgmath import se3op
 
 
+def get_inverse_tf(T):
+  """Returns the inverse of a given 4x4 homogeneous transform.
+    Args:
+        T (np.ndarray): 4x4 transformation matrix
+    Returns:
+        np.ndarray: inv(T)
+    """
+  T2 = T.copy()
+  T2[:3, :3] = T2[:3, :3].transpose()
+  T2[:3, 3:] = -1 * T2[:3, :3] @ T2[:3, 3:]
+  return T2
+
+
 class BagFileParser():
 
   def __init__(self, bag_file):
@@ -54,13 +67,17 @@ def main(dataset_dir, result_dir):
   # generate ground truth pose dictionary
   ground_truth_poses_odo = dict()
   for sequence in dataset_odo.sequences:
+    # Ground truth is provided w.r.t sensor, so we set sensor to vehicle
+    # transform to identity
+    yfwd2xfwd = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+    T_robot_radar_odo = yfwd2xfwd @ sequence.calib.T_applanix_lidar @ get_inverse_tf(sequence.calib.T_radar_lidar)
+    # T_robot_radar_odo = sequence.calib.T_applanix_lidar @ get_inverse_tf(sequence.calib.T_radar_lidar)
+    T_radar_robot_odo = get_inverse_tf(T_robot_radar_odo)
+
     # build dictionary
     precision = 1e7  # divide by this number to ensure always find the timestamp
     ground_truth_poses_odo.update(
         {int(int(frame.timestamp * 1e9) / precision): frame.pose for frame in sequence.radar_frames})
-    # need to invert y axis
-    for k in ground_truth_poses_odo.keys():
-      ground_truth_poses_odo[k][1, 3] = -ground_truth_poses_odo[k][1, 3]
   print("Loaded number of odometry poses: ", len(ground_truth_poses_odo))
 
   for i, loc_input in enumerate(loc_inputs):
@@ -71,13 +88,17 @@ def main(dataset_dir, result_dir):
     # generate ground truth pose dictionary
     ground_truth_poses_loc = dict()
     for sequence in dataset_loc.sequences:
+      # Ground truth is provided w.r.t sensor, so we set sensor to vehicle
+      # transform to identity
+      yfwd2xfwd = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+      T_robot_radar_loc = yfwd2xfwd @ sequence.calib.T_applanix_lidar @ get_inverse_tf(sequence.calib.T_radar_lidar)
+      # T_robot_radar_loc = sequence.calib.T_applanix_radar
+      T_radar_robot_loc = get_inverse_tf(T_robot_radar_loc)
+
       # build dictionary
       precision = 1e7  # divide by this number to ensure always find the timestamp
       ground_truth_poses_loc.update(
           {int(int(frame.timestamp * 1e9) / precision): frame.pose for frame in sequence.radar_frames})
-      # need to invert y axis
-      for k in ground_truth_poses_loc.keys():
-        ground_truth_poses_loc[k][1, 3] = -ground_truth_poses_loc[k][1, 3]
 
     print("Loaded number of localization poses: ", len(ground_truth_poses_loc))
 
@@ -101,8 +122,8 @@ def main(dataset_dir, result_dir):
       map_seq_timestamp = int(int(message[1].vertex_timestamp) / 1000)
       T_test_map_vec = np.array(message[1].t_robot_vertex.xi)[..., None]
       T_test_map = se3op.vec2tran(T_test_map_vec)
-      T_test_map_in_radar = T_test_map
-      T_map_test_in_radar = npla.inv(T_test_map_in_radar)
+      T_test_map_in_radar = T_radar_robot_loc @ T_test_map @ T_robot_radar_odo
+      T_map_test_in_radar = get_inverse_tf(T_test_map_in_radar)
       T_map_test_in_radar_res = T_map_test_in_radar.flatten().tolist()[:12]
       result.append([test_seq_timestamp, map_seq_timestamp] + T_map_test_in_radar_res)
 
@@ -117,9 +138,9 @@ def main(dataset_dir, result_dir):
       map_seq_timestamp = int(message[1].vertex_timestamp / precision)
       T_test_map_vec = np.array(message[1].t_robot_vertex.xi)[..., None]
       T_test_map = se3op.vec2tran(T_test_map_vec)
-      T_test_map_in_radar = T_test_map
-      T_map_test_in_radar = npla.inv(T_test_map_in_radar)
-      T_test_map_in_radar_gt = npla.inv(
+      T_test_map_in_radar = T_radar_robot_loc @ T_test_map @ T_robot_radar_odo
+      T_map_test_in_radar = get_inverse_tf(T_test_map_in_radar)
+      T_test_map_in_radar_gt = get_inverse_tf(
           ground_truth_poses_loc[test_seq_timestamp]) @ ground_truth_poses_odo[map_seq_timestamp]
       # compute error
       errors[i, :] = se3op.tran2vec(T_map_test_in_radar @ T_test_map_in_radar_gt).flatten()

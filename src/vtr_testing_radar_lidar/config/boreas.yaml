@@ -20,7 +20,7 @@
         # "radar.preprocessing",
         # "radar.mcransac",
         # "radar.odometry_icp",
-        # "radar.localization_icp",
+        # "radar_lidar.localization_icp",
       ]
 
     ############ tactic configuration ############
@@ -52,7 +52,7 @@
 
     ############ pipeline configuration ############
     pipeline:
-      type: radar
+      type: radar_lidar
 
       preprocessing: [
           # preprocessing thread modules
@@ -90,7 +90,7 @@
           threshold: 2.5 # threshold for k-strongest
         cen2018:
           zq: 2.5
-          sigma: 8
+          sigma: 17
         cacfar:
           width: 101
           guard: 5
@@ -113,7 +113,7 @@
       filtering:
         type: radar.preprocessing
 
-        voxel_downsample: true
+        voxel_downsample: false
         frame_voxel_size: 1.0 # grid size for frame voxelization in meters
 
         window_size: 3.0 # number of neighboring azimuths used to compute line normal
@@ -129,21 +129,19 @@
     odometry:
       mcransac:
         type: radar.mcransac
-        tolerance: 0.1225  # matched with squared error less than this are inliers
-        inlier_ratio: 0.9  # ratio of inliers required for MC-RANSAC to break early
-        iterations: 100    # Max number of RANSAC iterations
-        max_gn_iterations: 10  # Max number of Gauss-Newton NLLS iterations
-        epsilon_converge: 0.0001  # is norm(delta_w) < this, break out of Gauss-Newton
-        descriptor: orb
+        tolerance: 0.1225 # matched with squared error less than this are inliers
+        inlier_ratio: 0.9 # ratio of inliers required for MC-RANSAC to break early
+        iterations: 100 # Max number of RANSAC iterations
+        max_gn_iterations: 10 # Max number of Gauss-Newton NLLS iterations
+        epsilon_converge: 0.0001 # is norm(delta_w) < this, break out of Gauss-Newton
+        descriptor: basd
         # ORB
-        patch_size: 31  # patch size for ORB descriptor calculations
-        nndr: 1.0  # Nearest Neighbor Distance Ratio test after ORB matching
+        patch_size: 21 # patch size for ORB descriptor calculations
+        nndr: 0.8 # Nearest Neighbor Distance Ratio test after ORB matching
         # BASD
         nbins: 16
         bin_size: 1
-        visualize: false
-        filter_pc: false
-        init_icp: true
+        visualize: true
 
       icp:
         type: radar.odometry_icp
@@ -205,16 +203,20 @@
 
     localization:
       recall:
-        type: radar.localization_map_recall
+        type: lidar.localization_map_recall
 
-        map_version: "point_map"
+        map_version: "multi_exp_point_map"
 
         visualize: true
 
       icp:
-        type: radar.localization_icp
+        type: radar_lidar.localization_icp
 
         use_pose_prior: false
+
+        # lidar map projection parameters
+        elevation_threshold: 0.05 # elevation threshold in meters
+        normal_threshold: 0.5 # normal threshold in meters (assumed to be z-axis)
 
         # ICP parameters
         num_threads: 1
@@ -234,6 +236,8 @@
 
         # threshold
         min_matched_ratio: 0.0
+
+        visualize: true
 
       memory:
         type: "graph_mem_manager"

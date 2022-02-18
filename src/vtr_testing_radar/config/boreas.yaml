@@ -219,7 +219,7 @@
       icp:
         type: radar.localization_icp
 
-        use_pose_prior: false
+        use_pose_prior: true
 
         # ICP parameters
         num_threads: 1

@@ -212,7 +212,7 @@
       icp:
         type: radar_lidar.localization_icp
 
-        use_pose_prior: false
+        use_pose_prior: true
 
         # lidar map projection parameters
         elevation_threshold: 0.05 # elevation threshold in meters

@@ -23,12 +23,12 @@ def main(seq):
     axs[i, 2].hist(e[:, 3], bins=20, range=(0, 3))
     axs[i, 2].set_title('Orientation Error (deg)')
 
-  plt.savefig(os.path.join(seq[:-4] + '_hist.pdf'), pad_inches=0, bbox_inches='tight')
+  plt.savefig(os.path.join(seq + '_hist.pdf'), pad_inches=0, bbox_inches='tight')
   plt.close()
 
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
-  parser.add_argument('--seq', default="boreas-2021-09-07-09-35", type=str, help='which sequence to plot')
+  parser.add_argument('--seq', default="boreas-2020-12-04-14-00", type=str, help='which sequence to plot')
   args = parser.parse_args()
   main(args.seq)

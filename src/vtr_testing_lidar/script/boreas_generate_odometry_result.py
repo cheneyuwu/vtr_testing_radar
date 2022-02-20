@@ -56,7 +56,10 @@ def main(dataset_dir, result_dir):
   print("Odometry Run:", odo_input)
   print("Dataset Directory:", dataset_dir)
 
-  dataset_odo = BoreasDataset(osp.normpath(dataset_dir), [[odo_input]])
+  try:
+    dataset_odo = BoreasDataset(osp.normpath(dataset_dir), [[odo_input]])
+  except:
+    return
 
   odo_dir = osp.join(result_dir, odo_input)
 
@@ -86,6 +89,13 @@ def main(dataset_dir, result_dir):
     result.append([timestamp] + T_a_w_res)
 
   output_dir = osp.join(result_dir, "odometry_result")
+  os.makedirs(output_dir, exist_ok=True)
+  with open(osp.join(output_dir, odo_input + ".txt"), "+w") as file:
+    writer = csv.writer(file, delimiter=' ')
+    writer.writerows(result)
+    print("Written to file:", osp.join(output_dir, odo_input + ".txt"))
+
+  output_dir = osp.join(result_dir, "../odometry_result")
   os.makedirs(output_dir, exist_ok=True)
   with open(osp.join(output_dir, odo_input + ".txt"), "+w") as file:
     writer = csv.writer(file, delimiter=' ')

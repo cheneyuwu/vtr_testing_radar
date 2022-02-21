@@ -31,7 +31,7 @@ def main():
     indices = slice(0, t.shape[0], 10)
     axs[i].plot(t[indices], e[indices, 0], label='Lateral Error (m)')
     axs[i].plot(t[indices], e[indices, 1], label='Longitudinal Error (m)')
-    axs[i].plot(t[indices], e[indices, 3], label='Heading Error (deg)')
+    axs[i].plot(t[indices], e[indices, 5], label='Heading Error (deg)')
 
     axs[i].set_xlim([t[0], t[-1]])
     axs[i].set_ylim([-1.8, 1.8])

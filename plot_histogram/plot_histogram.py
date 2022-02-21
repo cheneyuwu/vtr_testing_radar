@@ -9,7 +9,7 @@ plt.rcParams.update({
     "font.family": "serif",
     "font.serif": ["Times"],
     'font.size': 10,
-}) 
+})
 
 def main(seq):
   rows = ['lidar-lidar', 'radar-radar', 'radar-lidar']
@@ -26,7 +26,7 @@ def main(seq):
     # note: set same range for each column
     axs[i, 0].hist(e[:, 0], bins=50, range=(-1, 1))
     axs[i, 1].hist(e[:, 1], bins=50, range=(-1, 1))
-    axs[i, 2].hist(e[:, 3], bins=50, range=(0, 2))
+    axs[i, 2].hist(e[:, 5], bins=50, range=(-2, 2))
     if i==0:
       axs[i, 0].set_title('Lateral Error (m)')
       axs[i, 1].set_title('Longitudinal Error (m)')

@@ -62,7 +62,7 @@
 
       odometry: [
           # odometry and mapping thread modules
-          # "mcransac",
+          "mcransac",
           "icp",
           "mapping",
           "keyframe_test",
@@ -80,12 +80,12 @@
       conversion:
         type: radar.navtech_extractor
         radar_resolution: 0.0596
-        detector: kstrongest # choose detector \in (kstrongest, cen2018, cacfar, oscfar, modified_cacfar)
+        detector: modified_cacfar # choose detector \in (kstrongest, cen2018, cacfar, oscfar, modified_cacfar)
         minr: 2.0 # mininum detection distance
         maxr: 80.0 # maximum detection distance
         # TODO: make cart_resolution an integer mult of radar_resolution
         cart_resolution: 0.2384 # m/pixel of BEV Cartesian radar image
-        beta: 0.049 # Doppler correction factor (set to 0 to turn this off)
+        beta: 0.0  # 0.049 # Doppler correction factor (set to 0 to turn this off)
         kstrong:
           kstrong: 12 # k-strongest per azimuth to retain
           threshold2: 0.0 # threshold for k-strongest (mult of mean)
@@ -118,7 +118,7 @@
       filtering:
         type: radar.preprocessing
 
-        voxel_downsample: true
+        voxel_downsample: false
         frame_voxel_size: 1.0 # grid size for frame voxelization in meters
 
         window_size: 3.0 # number of neighboring azimuths used to compute line normal
@@ -163,7 +163,7 @@
         ang_acc_std_dev_y: 0.0001
         ang_acc_std_dev_z: 0.01
 
-        velocity_damping_factor: 0.5
+        velocity_damping_factor: 1.0
 
         # ICP parameters
         num_threads: 1
@@ -219,7 +219,7 @@
       icp:
         type: radar.localization_icp
 
-        use_pose_prior: false
+        use_pose_prior: true
 
         # ICP parameters
         num_threads: 1

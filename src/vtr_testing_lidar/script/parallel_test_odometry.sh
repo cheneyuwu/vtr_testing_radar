@@ -56,3 +56,6 @@ for seq in ${SEQUENCES[@]}; do
   echo "Executing command: bash $ODOMETRY_EVAL_SCRIPT $seq"
   bash $ODOMETRY_EVAL_SCRIPT $seq
 done
+
+echo "Executing command: bash $ODOMETRY_EVAL_SCRIPT"
+bash $ODOMETRY_EVAL_SCRIPT

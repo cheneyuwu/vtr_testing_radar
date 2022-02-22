@@ -21,6 +21,8 @@ def main():
   # fig.subplots_adjust(left=0.16, right=0.95, bottom=0.1, top=0.93, wspace=0.7, hspace=0.7)
   # fig.subplots_adjust(left=0.1, right=0.9, wspace=0.3, hspace=0.4)
 
+  ylims = []
+
   for i, row in enumerate(rows):
     print(f"Row {i} corresponds to {row}")
 
@@ -48,13 +50,17 @@ def main():
     axs[i].set_axisbelow(True)
     axs[i].grid(which='both', linestyle='--', alpha=0.75)
 
-    ylim = np.max([np.max(abs(e[indices, 0])), np.max(abs(e[indices, 1]))]) + 0.025
+    ylims.append(np.max([np.max(abs(e[indices, 0])), np.max(abs(e[indices, 1]))]) + 0.025)
 
-    axs[i].set_ylim([-ylim, ylim])
+    # axs[i].set_ylim([-ylim, ylim])
     # axs[i].set_title(row)
     # axs[i].set_xlabel('Time (ms)')
     # axs[i].set_ylabel('Error')
     # axs[i].legend(loc="lower right")
+  ylim = np.max(ylims)
+  for i, _ in enumerate(rows):
+    axs[i].set_ylim([-ylim, ylim])
+    
   axs[i].set_xlabel('Time (s)')
   axs[i].legend(loc="upper center", ncol = 3, bbox_to_anchor=(0.5, -0.4))
 

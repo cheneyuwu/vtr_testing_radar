@@ -8,7 +8,7 @@ plt.rcParams.update({
     "text.usetex": True,
     "font.family": "serif",
     "font.serif": ["Times"],
-    'font.size': 10,
+    'font.size': 13,
 }) 
 
 def main(type,time):
@@ -20,14 +20,27 @@ def main(type,time):
   print(map.shape)
 
   # plot of path
-  plt.figure(figsize=(4, 4))
-  plt.scatter(map[:, 0], map[:, 1], 2, label='Submap')
-  plt.scatter(scan[:, 0], scan[:, 1], 2, label='Live Scan')
+  plt.figure(figsize=(6, 6))
+  xm = np.mean(scan[:, 0])
+  ym = np.mean(scan[:, 1])
+  map[:, 0] -= xm
+  map[:, 1] -= ym
+  scan[:, 0] -= xm
+  scan[:, 1] -= ym
+  xlim = np.max(np.abs(np.concatenate((map[:, 0], scan[:, 0]))))
+  ylim = np.max(np.abs(np.concatenate((map[:, 1], scan[:, 1]))))
+  lim = np.max([xlim, ylim]) - 5
+  plt.scatter(map[:, 0], map[:, 1], s=1, label='Submap', color='r')
+  plt.scatter(scan[:, 0], scan[:, 1], s=1, label='Live Scan', color='b')
+  # plt.xlim(-lim, lim)
+  # plt.ylim(-lim, lim)
   plt.xlabel('x (m)')
   plt.ylabel('y (m)')
+
+
   plt.axis('equal')
-  plt.legend(loc="upper left", prop={'size': 7})
-  plt.savefig(time + '_aligned_' + type + '.pdf', pad_inches=0.05, bbox_inches='tight')
+  # plt.legend(loc="upper left", prop={'size': 7})
+  plt.savefig(time + '_aligned_' + type + '.pdf', pad_inches=0.0, bbox_inches='tight')
   plt.close()
 
 

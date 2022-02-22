@@ -62,7 +62,7 @@
 
       odometry: [
           # odometry and mapping thread modules
-          "mcransac",
+          # "mcransac",
           "icp",
           "mapping",
           "keyframe_test",
@@ -127,7 +127,7 @@
         num_threads: 1 # number of threads for nearest neighbor search
 
         num_sample_linearity: 5000 # max number of sample after filtering based on linearity
-        min_linearity_score: 0.0 # min linearity score (negative value means no filtering)
+        min_linearity_score: -1.0 # min linearity score (negative value means no filtering)
 
         visualize: true
 

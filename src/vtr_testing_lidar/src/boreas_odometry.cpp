@@ -7,7 +7,7 @@
 
 #include "vtr_common/timing/utils.hpp"
 #include "vtr_common/utils/filesystem.hpp"
-#include "vtr_lidar/pipeline_v2.hpp"
+#include "vtr_lidar/pipeline.hpp"
 #include "vtr_logging/logging_init.hpp"
 #include "vtr_tactic/pipelines/factory.hpp"
 #include "vtr_tactic/rviz_tactic_callback.hpp"
@@ -83,6 +83,9 @@ EdgeTransform load_T_robot_lidar(const fs::path &path) {
 }
 
 int main(int argc, char **argv) {
+  // disable eigen multi-threading
+  Eigen::setNbThreads(1);
+
   rclcpp::init(argc, argv);
   const std::string node_name = "boreas_odometry_" + random_string(10);
   auto node = rclcpp::Node::make_shared(node_name);

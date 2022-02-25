@@ -239,7 +239,7 @@ int main(int argc, char **argv) {
   CLOG(WARNING, "test") << ss.str();
 
   /// NOTE: odometry is teach, localization is repeat
-  const auto T_loc_odo_init = [&]() {
+  auto T_loc_odo_init = [&]() {
     const auto T_robot_lidar_odo = load_T_robot_lidar(odo_dir);
     const auto T_enu_lidar_odo = load_T_enu_lidar_init(odo_dir);
 
@@ -249,6 +249,7 @@ int main(int argc, char **argv) {
     return T_robot_radar_loc * T_enu_radar_loc.inverse() * T_enu_lidar_odo *
            T_robot_lidar_odo.inverse();
   }();
+  T_loc_odo_init.setCovariance(Eigen::Matrix<double, 6, 6>::Identity());
   CLOG(WARNING, "test")
       << "Transform from localization to odometry has been set to "
       << T_loc_odo_init.vec().transpose();

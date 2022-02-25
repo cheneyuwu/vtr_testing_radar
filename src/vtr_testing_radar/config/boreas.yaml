@@ -12,8 +12,6 @@
         # "tactic.module",
         # "tactic.module.live_mem_manager",
         # "tactic.module.graph_mem_manager",
-        # pose graph
-        # "pose_graph",
         # pipeline specific
         "radar.pipeline",
         # "radar.navtech_extractor",
@@ -25,20 +23,13 @@
 
     ############ tactic configuration ############
     tactic:
-      task_queue_num_threads: 1
-      task_queue_size: -1
-
       enable_parallelization: false
       preprocessing_skippable: false
       odometry_mapping_skippable: false
       localization_skippable: false
 
-      localization_only_keyframe: false
-      default_loc_cov: [1.0, 0.5, 0.5, 0.25, 0.25, 0.5]
-
-      merge_threshold: [5.0, 3.0, 0.2]
-
-      extrapolate_odometry: true # path tracker
+      task_queue_num_threads: 1
+      task_queue_size: -1
 
       chain:
         min_cusp_distance: 1.5
@@ -47,7 +38,10 @@
         search_back_depth: 10
         distance_warning: 30.0
 
+      save_odometry_result: true
+      save_localization_result: true
       visualize: true
+
       rviz_loc_path_offset: [0., 0., 0.]
 
     ############ pipeline configuration ############
@@ -65,7 +59,7 @@
           # "mcransac",
           "icp",
           "mapping",
-          "keyframe_test",
+          "vertex_test",
           "memory",
         ]
 
@@ -85,7 +79,7 @@
         maxr: 80.0 # maximum detection distance
         # TODO: make cart_resolution an integer mult of radar_resolution
         cart_resolution: 0.2384 # m/pixel of BEV Cartesian radar image
-        beta: 0.0  # 0.049 # Doppler correction factor (set to 0 to turn this off)
+        beta: 0.0 # 0.049 # Doppler correction factor (set to 0 to turn this off)
         kstrong:
           kstrong: 12 # k-strongest per azimuth to retain
           threshold2: 0.0 # threshold for k-strongest (mult of mean)
@@ -107,7 +101,7 @@
           threshold2: 0.0 # cfar: mult of mean, T = threshold * Z + threshold2 * mean + threshold3
           threshold3: 0.07
         modified_cacfar:
-          width: 101  # Old: 101, New: 41
+          width: 101 # Old: 101, New: 41
           guard: 5 # Old: 5, New: 2
           threshold: 1.0 # Old: 0.2, New: 1,.0
           threshold2: 0.0 # Old: 4.0, New: 0.0 cfar: mult of mean, T = threshold * Z + threshold2 * mean + threshold3
@@ -118,13 +112,14 @@
       filtering:
         type: radar.preprocessing
 
+        num_threads: 1 # number of threads for nearest neighbor search
+
         voxel_downsample: false
         frame_voxel_size: 1.0 # grid size for frame voxelization in meters
 
         window_size: 3.0 # number of neighboring azimuths used to compute line normal
         aximuth_res: 0.015707963267948967 # azimuth resolution in radians (0.1 in degree), giveng M=400
         rho_scale: 1.0 # when finding neighbors, set rho to log(rho) / rho_scale
-        num_threads: 1 # number of threads for nearest neighbor search
 
         num_sample_linearity: 5000 # max number of sample after filtering based on linearity
         min_linearity_score: -1.0 # min linearity score (negative value means no filtering)
@@ -134,15 +129,15 @@
     odometry:
       mcransac:
         type: radar.mcransac
-        tolerance: 0.1225  # matched with squared error less than this are inliers
-        inlier_ratio: 0.9  # ratio of inliers required for MC-RANSAC to break early
-        iterations: 100    # Max number of RANSAC iterations
-        max_gn_iterations: 10  # Max number of Gauss-Newton NLLS iterations
-        epsilon_converge: 0.0001  # is norm(delta_w) < this, break out of Gauss-Newton
+        tolerance: 0.1225 # matched with squared error less than this are inliers
+        inlier_ratio: 0.9 # ratio of inliers required for MC-RANSAC to break early
+        iterations: 100 # Max number of RANSAC iterations
+        max_gn_iterations: 10 # Max number of Gauss-Newton NLLS iterations
+        epsilon_converge: 0.0001 # is norm(delta_w) < this, break out of Gauss-Newton
         descriptor: orb
         # ORB
-        patch_size: 31  # patch size for ORB descriptor calculations
-        nndr: 1.0  # Nearest Neighbor Distance Ratio test after ORB matching
+        patch_size: 31 # patch size for ORB descriptor calculations
+        nndr: 1.0 # Nearest Neighbor Distance Ratio test after ORB matching
         # BASD
         nbins: 16
         bin_size: 1
@@ -155,26 +150,18 @@
 
         # motion prior terms
         trajectory_smoothing: true
-        use_constant_acc: false
-        lin_acc_std_dev_x: 1.0
-        lin_acc_std_dev_y: 0.0001
-        lin_acc_std_dev_z: 0.0001
-        ang_acc_std_dev_x: 0.0001
-        ang_acc_std_dev_y: 0.0001
-        ang_acc_std_dev_z: 0.01
-
-        velocity_damping_factor: 1.0
+        qc_diagonal: [1.0, 0.0001, 0.0001, 0.0001, 0.0001, 0.01]
 
         # ICP parameters
         num_threads: 1
         first_num_steps: 2 # number of steps to with a greater matching distance threshold
-        averaging_num_steps: 5 # averaging pose change over this number of steps until change is below a threshold at convergence
         initial_max_iter: 4 # phase 1 max iterations
         initial_max_pairing_dist: 5.0 # phase 1 max pairing distance in meters
         initial_max_planar_dist: 5.0 # phase 1 max planar distance in meters
         refined_max_iter: 1000 # phase 2 max iterations
         refined_max_pairing_dist: 5.0 # phase 2 max pairing distance in meters
         refined_max_planar_dist: 5.0 # phase 2 max planar distance in meters
+        averaging_num_steps: 5 # averaging pose change over this number of steps until change is below a threshold at convergence
         huber_delta: 1.0 # huber loss threshold for ICP
 
         # steam parameters
@@ -187,7 +174,7 @@
         visualize: true
 
       mapping:
-        type: radar.odometry_map_merging
+        type: radar.odometry_map_maintenance
 
         map_voxel_size: 1.0 # voxel size of the map in meters
         crop_range_front: 80.0 # odometry map crop range centered at vehicle in meters (radius of the odometry map)
@@ -197,8 +184,8 @@
 
         visualize: true
 
-      keyframe_test:
-        type: radar.keyframe_test
+      vertex_test:
+        type: radar.vertex_test
 
         max_translation: 10.0 # translation threshold in meters
         max_rotation: 30.0 # rotation threshold in degrees
@@ -224,13 +211,13 @@
         # ICP parameters
         num_threads: 1
         first_num_steps: 2
-        averaging_num_steps: 5
         initial_max_iter: 4
         initial_max_pairing_dist: 5.0
         initial_max_planar_dist: 5.0
         refined_max_iter: 1000
         refined_max_pairing_dist: 5.0
         refined_max_planar_dist: 5.0
+        averaging_num_steps: 5
         huber_delta: 1.0
 
         # steam parameters

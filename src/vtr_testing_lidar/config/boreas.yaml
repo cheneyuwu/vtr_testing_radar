@@ -71,6 +71,10 @@
           "memory",
         ]
 
+      # submap creation thresholds
+      submap_translation_threshold: 20.0 # in meters
+      submap_rotation_threshold: 30.0 # in degrees
+
     preprocessing:
       conversion:
         type: lidar.velodyne_converter
@@ -144,8 +148,8 @@
       vertex_test:
         type: lidar.vertex_test
 
-        max_translation: 20.0
-        max_rotation: 30.0
+        max_translation: 1.0
+        max_rotation: 10.0
 
       memory:
         type: "live_mem_manager"
@@ -156,7 +160,7 @@
       recall:
         type: lidar.localization_map_recall
 
-        map_version: "point_map"
+        map_version: "pointmap"
 
         visualize: true
 

@@ -70,6 +70,10 @@
           "memory",
         ]
 
+      # submap creation thresholds
+      submap_translation_threshold: 10.0 # in meters
+      submap_rotation_threshold: 30.0 # in degrees
+
     preprocessing:
       conversion:
         type: radar.navtech_extractor
@@ -187,8 +191,8 @@
       vertex_test:
         type: radar.vertex_test
 
-        max_translation: 10.0 # translation threshold in meters
-        max_rotation: 30.0 # rotation threshold in degrees
+        max_translation: 1.0 # translation threshold in meters
+        max_rotation: 10.0 # rotation threshold in degrees
 
       memory:
         type: "live_mem_manager"
@@ -199,7 +203,7 @@
       recall:
         type: lidar.localization_map_recall
 
-        map_version: "point_map"
+        map_version: "pointmap"
 
         visualize: true
 

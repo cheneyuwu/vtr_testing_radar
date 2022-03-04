@@ -72,7 +72,7 @@
         ]
 
       # submap creation thresholds
-      submap_translation_threshold: 20.0 # in meters
+      submap_translation_threshold: 10.0 # in meters
       submap_rotation_threshold: 30.0 # in degrees
 
     preprocessing:

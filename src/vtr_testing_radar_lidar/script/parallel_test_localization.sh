@@ -53,4 +53,3 @@ done
 
 echo "Executing command: bash $LOCALIZATION_EVAL_SCRIPT $REFERENCE"
 bash $LOCALIZATION_EVAL_SCRIPT $REFERENCE
-

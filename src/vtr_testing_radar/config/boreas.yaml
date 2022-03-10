@@ -18,6 +18,8 @@
         # "radar.preprocessing",
         # "radar.mcransac",
         # "radar.odometry_icp",
+        # "radar.vertex_test",
+        "radar.localization_map_recall",
         # "radar.localization_icp",
       ]
 

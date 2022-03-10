@@ -18,6 +18,8 @@
         # "radar.preprocessing",
         # "radar.mcransac",
         # "radar.odometry_icp",
+        # "radar.vertex_test",
+        "radar.localization_map_recall",
         # "radar.localization_icp",
       ]
 
@@ -69,6 +71,10 @@
           "icp",
           "memory",
         ]
+
+      # submap creation thresholds
+      submap_translation_threshold: 10.0 # in meters
+      submap_rotation_threshold: 30.0 # in degrees
 
     preprocessing:
       conversion:
@@ -199,7 +205,7 @@
       recall:
         type: radar.localization_map_recall
 
-        map_version: "point_map"
+        map_version: "pointmap"
 
         visualize: true
 

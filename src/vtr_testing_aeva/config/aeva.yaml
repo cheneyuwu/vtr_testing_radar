@@ -88,7 +88,7 @@
 
         crop_range: 60.0
 
-        frame_voxel_size: 0.15 # grid subsampling voxel size
+        frame_voxel_size: 0.3
 
         visualize: true
 
@@ -99,6 +99,9 @@
         # motion prior terms
         trajectory_smoothing: true
         qc_diagonal: [1.0, 0.1, 0.1, 0.1, 0.1, 1.0]
+
+        use_radial_velocity: true
+        radial_velocity_cov: 1.0
 
         # ICP parameters
         num_threads: 1

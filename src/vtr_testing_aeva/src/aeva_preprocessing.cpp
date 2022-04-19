@@ -58,7 +58,8 @@ std::pair<int64_t, Eigen::MatrixXd> load_lidar(const std::string &path) {
 }
 
 EdgeTransform load_T_robot_lidar(const fs::path &path) {
-  std::ifstream ifs(path / "calib" / "T_applanix_lidar.txt", std::ios::in);
+#if false
+  std::ifstream ifs(path / "calib" / "T_applanix_aeva.txt", std::ios::in);
 
   Eigen::Matrix4d T_applanix_lidar_mat;
   for (size_t row = 0; row < 4; row++)
@@ -69,6 +70,10 @@ EdgeTransform load_T_robot_lidar(const fs::path &path) {
 
   EdgeTransform T_robot_lidar(Eigen::Matrix4d(yfwd2xfwd * T_applanix_lidar_mat),
                               Eigen::Matrix<double, 6, 6>::Zero());
+#else
+  EdgeTransform T_robot_lidar(Eigen::Matrix4d(Eigen::Matrix4d::Identity()),
+                              Eigen::Matrix<double, 6, 6>::Zero());
+#endif
 
   return T_robot_lidar;
 }

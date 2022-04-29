@@ -81,7 +81,7 @@ struct TestControl {
  private:
   mutable std::mutex mutex_;
 
-  bool play_ = false;
+  bool play_ = true;
   bool terminate_ = false;
   int delay_ = 0;  // milliseconds
 

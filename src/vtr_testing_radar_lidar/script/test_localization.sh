@@ -14,7 +14,7 @@ source ${VTRRROOT}/install/setup.bash
 
 rm -r ${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT}
 mkdir -p ${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT}
-cp -r ${VTRRRESULT}/${ODO_INPUT}/${ODO_INPUT}/* ${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT}
+cp -r ${VTRRRESULT}/${ODO_INPUT}/${ODO_INPUT}/*  ${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT}
 ros2 run vtr_testing_radar_lidar vtr_testing_radar_lidar_boreas_localization \
   --ros-args -p use_sim_time:=true \
   -r __ns:=/vtr \

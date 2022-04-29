@@ -31,12 +31,12 @@ LOC_INPUT=boreas-2021-01-26-10-59
 ## Using ONE of the following commands to launch a test
 
 # (TEST 1) Perform data preprocessing on a sequence (e.g. keypoint extraction)
-bash ${VTRRROOT}/src/vtr_testing_radar_lidar/script/test_preprocessing.sh ${ODO_INPUT}
+bash ${VTRRROOT}/src/vtr_testing_lidar/script/test_preprocessing.sh ${ODO_INPUT}
 
 # (TEST 2) Perform odometry on a sequence (this includes preprocessing, no need to run TEST1 first)
-bash ${VTRRROOT}/src/vtr_testing_radar_lidar/script/test_odometry.sh ${ODO_INPUT}
+bash ${VTRRROOT}/src/vtr_testing_lidar/script/test_odometry.sh ${ODO_INPUT}
 # Evaluation:
-bash ${VTRRROOT}/src/vtr_testing_radar_lidar/script/test_odometry_eval.sh ${ODO_INPUT}
+bash ${VTRRROOT}/src/vtr_testing_lidar/script/test_odometry_eval.sh ${ODO_INPUT}
 
 # (TEST 3) Perform localization on a sequence (only run this after TEST 2)
 bash ${VTRRROOT}/src/vtr_testing_radar_lidar/script/test_localization.sh ${ODO_INPUT} ${LOC_INPUT}

@@ -183,6 +183,7 @@
         type: radar.odometry_map_maintenance
 
         map_voxel_size: 1.0 # voxel size of the map in meters
+
         crop_range_front: 80.0 # odometry map crop range centered at vehicle in meters (radius of the odometry map)
         back_over_front_ratio: 1.0 # ratio of the back crop range to the front crop range (not important)
 

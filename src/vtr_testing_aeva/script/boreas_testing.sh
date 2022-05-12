@@ -25,7 +25,7 @@ mkdir -p ${VTRRRESULT}
 source ${VTRRROOT}/install/setup.bash
 
 # Choose a Teach (ODO_INPUT) and Repeat (LOC_INPUT) run from boreas dataset
-ODO_INPUT=boreas-2022-04-05-23-35
+ODO_INPUT=boreas-2022-05-06-15-22
 LOC_INPUT=
 
 ## Using ONE of the following commands to launch a test

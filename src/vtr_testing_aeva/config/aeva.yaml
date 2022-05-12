@@ -103,12 +103,12 @@
         traj_lock_prev_vel: false
         traj_qc_inv: [1.0, 0.1, 0.1, 0.1, 0.1, 1.0]
 
-        use_radial_velocity: false
+        use_radial_velocity: true
         rv_cov: 1.0
         rv_loss_threshold: 1.0
 
-        use_radial_velocity: true
-        radial_velocity_cov: 1.0
+        use_velocity_prior: true
+        vp_cov: [1000.0, 0.001, 1000.0, 1000.0, 1000.0, 1000.0]
 
         # ICP parameters
         num_threads: 1

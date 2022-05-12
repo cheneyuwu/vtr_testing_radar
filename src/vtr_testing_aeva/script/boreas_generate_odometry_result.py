@@ -12,6 +12,8 @@ from rclpy.serialization import deserialize_message
 from pylgmath import se3op
 from pyboreas import BoreasDataset
 
+np.set_printoptions(suppress=True)
+
 
 def get_inverse_tf(T):
   """Returns the inverse of a given 4x4 homogeneous transform.
@@ -71,7 +73,19 @@ def main(dataset_dir, result_dir):
 
   T_applanix_aeva = dataset_odo.sequences[0].calib.T_applanix_aeva
   # TODO: robot frame should be at rear-axle of the vehicle, update this!
-  T_robot_aeva = np.array([[1, 0, 0, 0.836819], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+  # T_robot_aeva = np.array([[1, 0, 0, 0.836819], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+  #
+  T_applanix_lidar = dataset_odo.sequences[0].calib.T_applanix_lidar
+  T_radar_lidar = dataset_odo.sequences[0].calib.T_radar_lidar
+  T_applanix_radar = T_applanix_lidar @ get_inverse_tf(T_radar_lidar)
+  T_aeva_radar = get_inverse_tf(T_applanix_aeva) @ T_applanix_radar
+  T_radar_robot = np.array([[1, 0, 0, -0.26], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+  T_robot_aeva = get_inverse_tf(T_aeva_radar @ T_radar_robot)
+  # T_robot_aeva: [[ 0.99997365 -0.00723374 -0.00099997  0.63984747]
+  #               [  0.00723374  0.99997365 -0.00000723  0.41767399]
+  #               [  0.001       0.          1.         -0.62863152]
+  #               [  0.          0.          0.          1.        ]]
+  print("T_robot_aeva should be:", T_robot_aeva)
   T_robot_applanix = T_robot_aeva @ get_inverse_tf(T_applanix_aeva)
 
   # get bag file

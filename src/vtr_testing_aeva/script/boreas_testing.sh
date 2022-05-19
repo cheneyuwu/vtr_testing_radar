@@ -26,7 +26,11 @@ source ${VTRRROOT}/install/setup.bash
 
 # Choose a Teach (ODO_INPUT) and Repeat (LOC_INPUT) run from boreas dataset
 ODO_INPUT=boreas-2022-05-06-15-22
-LOC_INPUT=
+ODO_INPUT=boreas-2022-05-13-09-23  # hwy7 first sequence
+ODO_INPUT=boreas-2022-05-13-09-45  # hwy7 second sequence (ground truth is probably bad)
+ODO_INPUT=boreas-2022-05-13-10-21  # dufferin first sequence (no ground truth)
+ODO_INPUT=boreas-2022-05-13-10-30  # dufferin second sequence
+ODO_INPUT=boreas-2022-05-13-11-47
 
 ## Using ONE of the following commands to launch a test
 
@@ -34,11 +38,7 @@ LOC_INPUT=
 bash ${VTRRROOT}/src/vtr_testing_aeva/script/test_preprocessing.sh ${ODO_INPUT}
 
 # (TEST 2) Perform odometry on a sequence (this includes preprocessing, no need to run TEST1 first)
-bash ${VTRRROOT}/src/vtr_testing_aeva/script/test_odometry.sh ${ODO_INPUT}
+bash ${VTRRROOT}/src/vtr_testing_aeva/script/test_odometry.sh ${ODO_INPUT} ; alert
 # Evaluation:
 bash ${VTRRROOT}/src/vtr_testing_aeva/script/test_odometry_eval.sh ${ODO_INPUT}
 
-# (TEST 3) Perform localization on a sequence (only run this after TEST 2)
-bash ${VTRRROOT}/src/vtr_testing_aeva/script/test_localization.sh ${ODO_INPUT} ${LOC_INPUT}
-# Evaluation:
-bash ${VTRRROOT}/src/vtr_testing_aeva/script/test_localization_eval.sh ${ODO_INPUT}

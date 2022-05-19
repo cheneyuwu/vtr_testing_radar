@@ -61,6 +61,7 @@ def main(dataset_dir, result_dir):
   try:
     dataset_odo = BoreasDataset(osp.normpath(dataset_dir), [[odo_input]])
   except:
+    print("Data set does not exist:", dataset_dir, odo_input)
     return
 
   odo_dir = osp.join(result_dir, odo_input)
@@ -73,8 +74,11 @@ def main(dataset_dir, result_dir):
 
   T_applanix_aeva = dataset_odo.sequences[0].calib.T_applanix_aeva
   # TODO: robot frame should be at rear-axle of the vehicle, update this!
+  ## old way of getting robot applanix
   # T_robot_aeva = np.array([[1, 0, 0, 0.836819], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
   #
+
+  ## new way of getting robot applanix
   T_applanix_lidar = dataset_odo.sequences[0].calib.T_applanix_lidar
   T_radar_lidar = dataset_odo.sequences[0].calib.T_radar_lidar
   T_applanix_radar = T_applanix_lidar @ get_inverse_tf(T_radar_lidar)
@@ -85,8 +89,11 @@ def main(dataset_dir, result_dir):
   #               [  0.00723374  0.99997365 -0.00000723  0.41767399]
   #               [  0.001       0.          1.         -0.62863152]
   #               [  0.          0.          0.          1.        ]]
-  print("T_robot_aeva should be:", T_robot_aeva)
+  print("T_robot_aeva should be:\n", T_robot_aeva)
   T_robot_applanix = T_robot_aeva @ get_inverse_tf(T_applanix_aeva)
+
+  # this is a correction to the calibration
+  # TODO
 
   # get bag file
   bag_file = '{0}/{1}/{1}_0.db3'.format(osp.abspath(data_dir), "odometry_result")

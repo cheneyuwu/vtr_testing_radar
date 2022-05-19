@@ -58,6 +58,7 @@ std::pair<int64_t, Eigen::MatrixXd> load_lidar(const std::string &path) {
 }
 
 EdgeTransform load_T_robot_lidar(const fs::path &path) {
+#if false
   std::ifstream ifs(path / "calib" / "T_applanix_lidar.txt", std::ios::in);
 
   Eigen::Matrix4d T_applanix_lidar_mat;
@@ -69,6 +70,18 @@ EdgeTransform load_T_robot_lidar(const fs::path &path) {
 
   EdgeTransform T_robot_lidar(Eigen::Matrix4d(yfwd2xfwd * T_applanix_lidar_mat),
                               Eigen::Matrix<double, 6, 6>::Zero());
+#else
+  Eigen::Matrix4d T_robot_lidar_mat;
+  // clang-format off
+  /// results from HERO paper
+  T_robot_lidar_mat <<  0.68297386,  0.73044281,  0.        ,  0.26      ,
+                       -0.73044281,  0.68297386,  0.        ,  0.        ,
+                        0.        ,  0.        ,  1.        , -0.21      ,
+                        0.        ,  0.        ,  0.        ,  1.        ;
+  // clang-format on
+  EdgeTransform T_robot_lidar(T_robot_lidar_mat,
+                              Eigen::Matrix<double, 6, 6>::Zero());
+#endif
 
   return T_robot_lidar;
 }

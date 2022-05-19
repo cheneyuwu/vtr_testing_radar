@@ -45,11 +45,11 @@ git clone git@github.com:cheneyuwu/vtr_testing_radar.git
 
 This builds a image that has all dependencies installed.
 
-NOTE that if you are using obelisk, then change the image name to `vtr3_main_lidar_<your name>` or something else to avoid conflicts.
+NOTE that if you are using obelisk, then change the image name to `vtr3_lidar_<your name>` or something else to avoid conflicts.
 
 ```
 cd ${VTRSRC}
-docker build -t vtr3_main_lidar \
+docker build -t vtr3_lidar \
   --build-arg USERID=$(id -u) \
   --build-arg GROUPID=$(id -g) \
   --build-arg USERNAME=$(whoami) \
@@ -63,16 +63,17 @@ Reference: https://github.com/utiasASRL/vtr3/wiki/EXPERIMENTAL-Running-VTR3-from
 Install nvidia docker runtime first: https://nvidia.github.io/nvidia-container-runtime/
 
 ```
-docker run -it --rm --name vtr3_main_lidar \
+docker run -it --name vtr3_lidar \
   --privileged \
   --network=host \
   --gpus all \
   -e DISPLAY=$DISPLAY \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
-  -v ${HOME}/ASRL:${HOME}/ASRL:rw vtr3_main_lidar
+  -v ${HOME}:${HOME}:rw \
+  -v ${HOME}/ASRL:${HOME}/ASRL:rw vtr3_lidar
 ```
 
-FYI: to start a new terminal with the existing container: `docker exec -it --privileged vtr3_main_lidar bash`
+FYI: to start a new terminal with the existing container: `docker exec -it --privileged vtr3_lidar bash`
 
 Reference: https://github.com/utiasASRL/vtr3/wiki/EXPERIMENTAL-Running-VTR3-from-a-Docker-Container
 

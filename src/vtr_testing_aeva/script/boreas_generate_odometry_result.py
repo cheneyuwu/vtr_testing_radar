@@ -54,17 +54,18 @@ class BagFileParser():
 def main(dataset_dir, result_dir):
   result_dir = osp.normpath(result_dir)
   odo_input = osp.basename(result_dir)
+  odo_input_seq = odo_input.split('.', 1)[0]
   print("Result Directory:", result_dir)
-  print("Odometry Run:", odo_input)
+  print("Odometry Run:", odo_input_seq)
   print("Dataset Directory:", dataset_dir)
 
   try:
-    dataset_odo = BoreasDataset(osp.normpath(dataset_dir), [[odo_input]])
+    dataset_odo = BoreasDataset(osp.normpath(dataset_dir), [[odo_input_seq]])
   except:
-    print("Data set does not exist:", dataset_dir, odo_input)
+    print("Data set does not exist:", dataset_dir, odo_input_seq)
     return
 
-  odo_dir = osp.join(result_dir, odo_input)
+  odo_dir = osp.join(result_dir, odo_input_seq)
 
   data_dir = osp.join(odo_dir, "graph/data")
   if not osp.exists(data_dir):
@@ -73,6 +74,17 @@ def main(dataset_dir, result_dir):
   print("Looking at result data directory:", data_dir)
 
   T_applanix_aeva = dataset_odo.sequences[0].calib.T_applanix_aeva
+  print("T_applanix_aeva before:\n", T_applanix_aeva)
+  # this is a correction to the calibration
+  T_agt_apd = np.array([
+      [0.995621, 0.002137, 0.09346, 0.002811],
+      [-0.003235, 0.999928, 0.011597, -0.04655],
+      [-0.093429, -0.011848, 0.995555, 0.128853],
+      [0., 0., 0., 1.],
+  ])
+  T_applanix_aeva = T_agt_apd @ T_applanix_aeva
+  print("T_applanix_aeva after:\n", T_applanix_aeva)
+
   # TODO: robot frame should be at rear-axle of the vehicle, update this!
   ## old way of getting robot applanix
   # T_robot_aeva = np.array([[1, 0, 0, 0.836819], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
@@ -92,9 +104,6 @@ def main(dataset_dir, result_dir):
   print("T_robot_aeva should be:\n", T_robot_aeva)
   T_robot_applanix = T_robot_aeva @ get_inverse_tf(T_applanix_aeva)
 
-  # this is a correction to the calibration
-  # TODO
-
   # get bag file
   bag_file = '{0}/{1}/{1}_0.db3'.format(osp.abspath(data_dir), "odometry_result")
   parser = BagFileParser(bag_file)
@@ -111,17 +120,17 @@ def main(dataset_dir, result_dir):
 
   output_dir = osp.join(result_dir, "odometry_result")
   os.makedirs(output_dir, exist_ok=True)
-  with open(osp.join(output_dir, odo_input + ".txt"), "+w") as file:
+  with open(osp.join(output_dir, odo_input_seq + ".txt"), "+w") as file:
     writer = csv.writer(file, delimiter=' ')
     writer.writerows(result)
-    print("Written to file:", osp.join(output_dir, odo_input + ".txt"))
+    print("Written to file:", osp.join(output_dir, odo_input_seq + ".txt"))
 
   output_dir = osp.join(result_dir, "../odometry_result")
   os.makedirs(output_dir, exist_ok=True)
-  with open(osp.join(output_dir, odo_input + ".txt"), "+w") as file:
+  with open(osp.join(output_dir, odo_input_seq + ".txt"), "+w") as file:
     writer = csv.writer(file, delimiter=' ')
     writer.writerows(result)
-    print("Written to file:", osp.join(output_dir, odo_input + ".txt"))
+    print("Written to file:", osp.join(output_dir, odo_input_seq + ".txt"))
 
 
 if __name__ == "__main__":

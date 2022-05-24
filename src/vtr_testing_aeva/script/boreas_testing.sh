@@ -26,11 +26,11 @@ source ${VTRRROOT}/install/setup.bash
 
 # Choose a Teach (ODO_INPUT) and Repeat (LOC_INPUT) run from boreas dataset
 ODO_INPUT=boreas-2022-05-06-15-22
+ODO_INPUT=boreas-2022-05-13-11-47
 ODO_INPUT=boreas-2022-05-13-09-23  # hwy7 first sequence
 ODO_INPUT=boreas-2022-05-13-09-45  # hwy7 second sequence (ground truth is probably bad)
 ODO_INPUT=boreas-2022-05-13-10-21  # dufferin first sequence (no ground truth)
 ODO_INPUT=boreas-2022-05-13-10-30  # dufferin second sequence
-ODO_INPUT=boreas-2022-05-13-11-47
 
 ## Using ONE of the following commands to launch a test
 

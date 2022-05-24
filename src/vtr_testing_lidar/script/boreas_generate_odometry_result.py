@@ -54,17 +54,18 @@ class BagFileParser():
 def main(dataset_dir, result_dir):
   result_dir = osp.normpath(result_dir)
   odo_input = osp.basename(result_dir)
+  odo_input_seq = odo_input.split('.', 1)[0]
   print("Result Directory:", result_dir)
-  print("Odometry Run:", odo_input)
+  print("Odometry Run:", odo_input_seq)
   print("Dataset Directory:", dataset_dir)
 
   try:
-    dataset_odo = BoreasDataset(osp.normpath(dataset_dir), [[odo_input]])
+    dataset_odo = BoreasDataset(osp.normpath(dataset_dir), [[odo_input_seq]])
   except:
-    print("Data set does not exist:", dataset_dir, odo_input)
+    print("Data set does not exist:", dataset_dir, odo_input_seq)
     return
 
-  odo_dir = osp.join(result_dir, odo_input)
+  odo_dir = osp.join(result_dir, odo_input_seq)
 
   data_dir = osp.join(odo_dir, "graph/data")
   if not osp.exists(data_dir):
@@ -73,6 +74,19 @@ def main(dataset_dir, result_dir):
   print("Looking at result data directory:", data_dir)
 
   T_applanix_lidar = dataset_odo.sequences[0].calib.T_applanix_lidar
+  print("T_applanix_lidar before:\n", T_applanix_lidar)
+  # this is a correction to the calibration
+  T_agt_apd = np.array([
+      [0.999747, -0.019076, -0.011934, -0.007568],
+      [0.019052, 0.999816, -0.002173, -0.01067],
+      [0.011973, 0.001945, 0.999926, -0.183529],
+      [0., 0., 0., 1.],
+  ])
+  T_applanix_lidar = T_agt_apd @ T_applanix_lidar
+  # T_applanix_lidar[:2, 3] = 0.
+  # T_applanix_lidar[2, 3] = 0.31601375
+  print("T_applanix_lidar after:\n", T_applanix_lidar)
+
   # TODO: robot frame should be at rear-axle of the vehicle, update this!
   # ## old way of getting robot applanix
   # # T_radar_lidar = dataset_odo.sequences[0].calib.T_radar_lidar
@@ -91,15 +105,6 @@ def main(dataset_dir, result_dir):
   print("T_robot_lidar should be:\n", T_robot_lidar)
   T_robot_applanix = T_robot_lidar @ get_inverse_tf(T_applanix_lidar)
 
-  # this is a correction to the calibration
-  T_agt_apd = np.array([
-      [0.999747, -0.019076, -0.011934, -0.007568],
-      [0.019052, 0.999816, -0.002173, -0.01067],
-      [0.011973, 0.001945, 0.999926, -0.183529],
-      [0., 0., 0., 1.],
-  ])
-  T_robot_applanix = T_robot_applanix @ get_inverse_tf(T_agt_apd)
-
   # get bag file
   bag_file = '{0}/{1}/{1}_0.db3'.format(osp.abspath(data_dir), "odometry_result")
   parser = BagFileParser(bag_file)
@@ -116,17 +121,17 @@ def main(dataset_dir, result_dir):
 
   output_dir = osp.join(result_dir, "odometry_result")
   os.makedirs(output_dir, exist_ok=True)
-  with open(osp.join(output_dir, odo_input + ".txt"), "+w") as file:
+  with open(osp.join(output_dir, odo_input_seq + ".txt"), "+w") as file:
     writer = csv.writer(file, delimiter=' ')
     writer.writerows(result)
-    print("Written to file:", osp.join(output_dir, odo_input + ".txt"))
+    print("Written to file:", osp.join(output_dir, odo_input_seq + ".txt"))
 
   output_dir = osp.join(result_dir, "../odometry_result")
   os.makedirs(output_dir, exist_ok=True)
-  with open(osp.join(output_dir, odo_input + ".txt"), "+w") as file:
+  with open(osp.join(output_dir, odo_input_seq + ".txt"), "+w") as file:
     writer = csv.writer(file, delimiter=' ')
     writer.writerows(result)
-    print("Written to file:", osp.join(output_dir, odo_input + ".txt"))
+    print("Written to file:", osp.join(output_dir, odo_input_seq + ".txt"))
 
 
 if __name__ == "__main__":

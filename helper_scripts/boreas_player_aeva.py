@@ -180,8 +180,12 @@ class BoreasPlayer(Node):
     self.path_publisher = self.create_publisher(nav_msgs.Path, '/ground_truth_path', 10)
     self.odometry_publisher = self.create_publisher(nav_msgs.Odometry, '/ground_truth_odometry', 10)
 
-    path_to_dataset = '/home/yuchen/ASRL/data/boreas/sequences'
+    # path_to_dataset = '/home/yuchen/ASRL/data/boreas/sequences'
+    path_to_dataset = '/media/yuchen/T7/ASRL/data/boreas/sequences'
+    # seq = 'boreas-2022-05-13-10-30'
     seq = 'boreas-2022-05-06-15-22'
+    # seq = 'boreas-2022-05-13-11-47'
+
 
     self.T_robot_applanix = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
     self.T_applanix_lidar = np.loadtxt(osp.join(path_to_dataset, seq, 'calib', 'T_applanix_lidar.txt'))
@@ -199,6 +203,7 @@ class BoreasPlayer(Node):
     poses, times = read_traj_file_gt(filepath, T_calib, 3)
     # self.simulate_odometry(poses, Time(seconds=0).to_msg(), 'world')
 
+    poses = poses[::10]  # downsample
     path = self.poses2path(poses, Time(seconds=0).to_msg(), 'world')
     self.path_publisher.publish(path)
 

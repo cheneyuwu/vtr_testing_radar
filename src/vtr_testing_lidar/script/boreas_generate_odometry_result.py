@@ -74,37 +74,27 @@ def main(dataset_dir, result_dir):
   print("Looking at result data directory:", data_dir)
 
   T_applanix_lidar = dataset_odo.sequences[0].calib.T_applanix_lidar
-  print("T_applanix_lidar before:\n", T_applanix_lidar)
-  # this is a correction to the calibration
-  T_agt_apd = np.array([
-      [0.999747, -0.019076, -0.011934, -0.007568],
-      [0.019052, 0.999816, -0.002173, -0.01067],
-      [0.011973, 0.001945, 0.999926, -0.183529],
-      [0., 0., 0., 1.],
-  ])
-  T_applanix_lidar = T_agt_apd @ T_applanix_lidar
-  # T_applanix_lidar[:2, 3] = 0.
-  # T_applanix_lidar[2, 3] = 0.31601375
-  print("T_applanix_lidar after:\n", T_applanix_lidar)
-
+  T_robot_applanix = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+  
   # TODO: robot frame should be at rear-axle of the vehicle, update this!
   # ## old way of getting robot applanix
-  # # T_radar_lidar = dataset_odo.sequences[0].calib.T_radar_lidar
-  # # T_applanix_radar = T_applanix_lidar @ get_inverse_tf(T_radar_lidar)
-  # T_robot_applanix = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
-  # # T_robot_radar = T_robot_applanix @ T_applanix_radar
+  #T_radar_lidar = dataset_odo.sequences[0].calib.T_radar_lidar
+  #T_applanix_radar = T_applanix_lidar @ get_inverse_tf(T_radar_lidar)
+  #T_robot_applanix = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+  #T_robot_radar = T_robot_applanix @ T_applanix_radar
 
   ## new way of getting robot applanix
-  T_radar_lidar = dataset_odo.sequences[0].calib.T_radar_lidar
-  T_radar_robot = np.array([[1, 0, 0, -0.26], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
-  T_robot_lidar = get_inverse_tf(T_radar_robot) @ T_radar_lidar
+  #T_radar_lidar = dataset_odo.sequences[0].calib.T_radar_lidar
+  #T_radar_robot = np.array([[1, 0, 0, -0.26], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+  #T_robot_lidar = get_inverse_tf(T_radar_robot) @ T_radar_lidar
   # T_robot_lidar: [[ 0.68297386  0.73044281  0.          0.26      ]
   #                 [-0.73044281  0.68297386  0.          0.        ]
   #                 [ 0.          0.          1.         -0.21      ]
   #                 [ 0.          0.          0.          1.        ]]
-  print("T_robot_lidar should be:\n", T_robot_lidar)
-  T_robot_applanix = T_robot_lidar @ get_inverse_tf(T_applanix_lidar)
 
+  #print("T_robot_lidar should be:\n", T_robot_lidar)
+  #T_robot_applanix = T_robot_lidar @ get_inverse_tf(T_applanix_lidar)
+  
   # get bag file
   bag_file = '{0}/{1}/{1}_0.db3'.format(osp.abspath(data_dir), "odometry_result")
   parser = BagFileParser(bag_file)

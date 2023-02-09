@@ -12,6 +12,8 @@ from rclpy.serialization import deserialize_message
 from pylgmath import se3op
 from pyboreas import BoreasDataset
 
+np.set_printoptions(suppress=True)
+
 
 def get_inverse_tf(T):
   """Returns the inverse of a given 4x4 homogeneous transform.
@@ -52,28 +54,47 @@ class BagFileParser():
 def main(dataset_dir, result_dir):
   result_dir = osp.normpath(result_dir)
   odo_input = osp.basename(result_dir)
+  odo_input_seq = odo_input.split('.', 1)[0]
   print("Result Directory:", result_dir)
-  print("Odometry Run:", odo_input)
+  print("Odometry Run:", odo_input_seq)
   print("Dataset Directory:", dataset_dir)
 
   try:
-    dataset_odo = BoreasDataset(osp.normpath(dataset_dir), [[odo_input]])
+    dataset_odo = BoreasDataset(osp.normpath(dataset_dir), [[odo_input_seq]])
   except:
+    print("Data set does not exist:", dataset_dir, odo_input_seq)
     return
 
-  odo_dir = osp.join(result_dir, odo_input)
+  odo_dir = osp.join(result_dir, odo_input_seq)
 
   data_dir = osp.join(odo_dir, "graph/data")
   if not osp.exists(data_dir):
+    print("Data directory does not exist:", data_dir)
     return
   print("Looking at result data directory:", data_dir)
 
-  # T_applanix_lidar = dataset_odo.sequences[0].calib.T_applanix_lidar
-  # T_radar_lidar = dataset_odo.sequences[0].calib.T_radar_lidar
-  # T_applanix_radar = T_applanix_lidar @ get_inverse_tf(T_radar_lidar)
+  T_applanix_lidar = dataset_odo.sequences[0].calib.T_applanix_lidar
   T_robot_applanix = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
-  # T_robot_radar = T_robot_applanix @ T_applanix_radar
+  
+  # TODO: robot frame should be at rear-axle of the vehicle, update this!
+  # ## old way of getting robot applanix
+  #T_radar_lidar = dataset_odo.sequences[0].calib.T_radar_lidar
+  #T_applanix_radar = T_applanix_lidar @ get_inverse_tf(T_radar_lidar)
+  #T_robot_applanix = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+  #T_robot_radar = T_robot_applanix @ T_applanix_radar
 
+  ## new way of getting robot applanix
+  #T_radar_lidar = dataset_odo.sequences[0].calib.T_radar_lidar
+  #T_radar_robot = np.array([[1, 0, 0, -0.26], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
+  #T_robot_lidar = get_inverse_tf(T_radar_robot) @ T_radar_lidar
+  # T_robot_lidar: [[ 0.68297386  0.73044281  0.          0.26      ]
+  #                 [-0.73044281  0.68297386  0.          0.        ]
+  #                 [ 0.          0.          1.         -0.21      ]
+  #                 [ 0.          0.          0.          1.        ]]
+
+  #print("T_robot_lidar should be:\n", T_robot_lidar)
+  #T_robot_applanix = T_robot_lidar @ get_inverse_tf(T_applanix_lidar)
+  
   # get bag file
   bag_file = '{0}/{1}/{1}_0.db3'.format(osp.abspath(data_dir), "odometry_result")
   parser = BagFileParser(bag_file)
@@ -90,17 +111,17 @@ def main(dataset_dir, result_dir):
 
   output_dir = osp.join(result_dir, "odometry_result")
   os.makedirs(output_dir, exist_ok=True)
-  with open(osp.join(output_dir, odo_input + ".txt"), "+w") as file:
+  with open(osp.join(output_dir, odo_input_seq + ".txt"), "+w") as file:
     writer = csv.writer(file, delimiter=' ')
     writer.writerows(result)
-    print("Written to file:", osp.join(output_dir, odo_input + ".txt"))
+    print("Written to file:", osp.join(output_dir, odo_input_seq + ".txt"))
 
   output_dir = osp.join(result_dir, "../odometry_result")
   os.makedirs(output_dir, exist_ok=True)
-  with open(osp.join(output_dir, odo_input + ".txt"), "+w") as file:
+  with open(osp.join(output_dir, odo_input_seq + ".txt"), "+w") as file:
     writer = csv.writer(file, delimiter=' ')
     writer.writerows(result)
-    print("Written to file:", osp.join(output_dir, odo_input + ".txt"))
+    print("Written to file:", osp.join(output_dir, odo_input_seq + ".txt"))
 
 
 if __name__ == "__main__":

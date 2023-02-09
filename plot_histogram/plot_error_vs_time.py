@@ -8,18 +8,37 @@ plt.rcParams.update({
     "text.usetex": True,
     "font.family": "serif",
     "font.serif": ["Times"],
-    # 'font.size': 10,
+    'font.size': 10,
+    'xtick.labelsize': 10,
+    'ytick.labelsize': 10,
     'axes.linewidth': 1,
-    'axes.labelsize': 12,
+    'axes.titlesize': 10,
+    'axes.labelsize': 10,
 })
+
+
+def setup_figure(row, col, height, width, l=0.0, r=0.0, b=0.0, t=0.0, w=0.0, h=0.0):
+  tot_height = row * height
+  tot_width = col * width
+  # axes spacing
+  tot_height = tot_height + (height * h) * (row - 1)
+  tot_width = tot_width + (width * w) * (col - 1)
+  # left right padding
+  tot_height = tot_height / (1 - (b + t))
+  tot_width = tot_width / (1 - (l + r))
+
+  fig, axs = plt.subplots(row, col, figsize=(tot_width, tot_height))
+  fig.subplots_adjust(left=l, right=1.0 - r, bottom=b, top=1.0 - t)
+  fig.subplots_adjust(wspace=w, hspace=h)
+  print(f"Figure size (width, height): {fig.get_size_inches()}")
+  return fig, axs
+
 
 def main():
   seq = "boreas-2021-01-26-10-59"
   rows = ['lidar-lidar', 'radar-radar', 'radar-lidar']
 
-  fig, axs = plt.subplots(3, 1, figsize=(6, 5))
-  # fig.subplots_adjust(left=0.16, right=0.95, bottom=0.1, top=0.93, wspace=0.7, hspace=0.7)
-  # fig.subplots_adjust(left=0.1, right=0.9, wspace=0.3, hspace=0.4)
+  fig, axs = setup_figure(3, 1, 1.0, 4.0, l=0.10, r=0.05, b=0.05, t=0.07, w=0.33, h=0.30)
 
   ylims = []
 
@@ -60,9 +79,9 @@ def main():
   ylim = np.max(ylims)
   for i, _ in enumerate(rows):
     axs[i].set_ylim([-ylim, ylim])
-    
+
   axs[i].set_xlabel('Time (s)')
-  axs[i].legend(loc="upper center", ncol = 3, bbox_to_anchor=(0.5, -0.4))
+  axs[i].legend(loc="upper center", ncol=3, bbox_to_anchor=(0.5, -0.4), frameon=False)
 
   plt.savefig(os.path.join(seq + '_time.pdf'), pad_inches=0.05, bbox_inches='tight')
   plt.close()

@@ -33,7 +33,7 @@ LOC_INPUT=boreas-2021-01-26-10-59
 # (TEST 1) Perform data preprocessing on a sequence (e.g. keypoint extraction)
 bash ${VTRRROOT}/src/vtr_testing_radar/script/test_preprocessing.sh ${ODO_INPUT}
 
-# (TEST 2) Perform odometry on a sequence
+# (TEST 2) Perform odometry on a sequence (this includes preprocessing, no need to run TEST1 first)
 bash ${VTRRROOT}/src/vtr_testing_radar/script/test_odometry.sh ${ODO_INPUT}
 # Evaluation:
 bash ${VTRRROOT}/src/vtr_testing_radar/script/test_odometry_eval.sh ${ODO_INPUT}

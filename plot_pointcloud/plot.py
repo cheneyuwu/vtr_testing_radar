@@ -20,16 +20,15 @@ def phi2C(phi):
 def main(time):
 
   # load errors, location is relative to this script
-  scan = np.loadtxt(time + '_lidar.txt')
+  scan = np.loadtxt(time + '.txt')
   # rotate to better view
-  scan = scan @ phi2C(80)
+  scan[:, :3] = scan[:, :3] @ phi2C(80)
+  scan = scan[scan[:, 3] > 0.5]
   # crop to 60m
-  scan = scan[np.where(np.sqrt(scan[:, 0] ** 2 + scan[:, 1] ** 2) < 60.0)[0]]
+  scan = scan[np.where(np.sqrt(scan[:, 0]**2 + scan[:, 1]**2) < 60.0)[0]]
   # downsampling by 50%
   scan = scan[np.random.choice(np.arange(scan.shape[0]), int(scan.shape[0] / 2), False)]
   print(scan.shape)
-
-
 
   # plot of path
   plt.figure(figsize=(6, 5))
@@ -44,7 +43,8 @@ def main(time):
   plt.ylabel('y (m)')
   plt.colorbar()
   plt.axis('equal')
-  plt.savefig(time + '_cloud.pdf', pad_inches=0.0, bbox_inches='tight')
+  plt.show()
+  plt.savefig(time + '.pdf', pad_inches=0.0, bbox_inches='tight')
   plt.close()
 
 

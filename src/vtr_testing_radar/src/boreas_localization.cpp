@@ -1,5 +1,4 @@
 #include <filesystem>
-#include <random>
 
 #include "rclcpp/rclcpp.hpp"
 #include "rosgraph_msgs/msg/clock.hpp"
@@ -13,22 +12,14 @@
 #include "vtr_tactic/rviz_tactic_callback.hpp"
 #include "vtr_tactic/tactic.hpp"
 
+#include "vtr_testing_radar/utils.hpp"
+
 namespace fs = std::filesystem;
 using namespace vtr;
 using namespace vtr::common;
 using namespace vtr::logging;
 using namespace vtr::tactic;
-
-std::string random_string(std::size_t length) {
-  const std::string CHARACTERS = "abcdefghijklmnopqrstuvwxyz";
-  std::random_device random_device;
-  std::mt19937 generator(random_device());
-  std::uniform_int_distribution<> distribution(0, CHARACTERS.size() - 1);
-  std::string result;
-  for (std::size_t i = 0; i < length; ++i)
-    result += CHARACTERS[distribution(generator)];
-  return result;
-}
+using namespace vtr::testing;
 
 int64_t getStampFromPath(const std::string &path) {
   std::vector<std::string> parts;
@@ -105,7 +96,9 @@ EdgeTransform load_T_enu_radar_init(const fs::path &path) {
     gt.push_back(std::stod(str));
 
   Eigen::Matrix4d T_mat = Eigen::Matrix4d::Identity();
-  T_mat.block<3, 3>(0, 0) = rpy2rot(gt[7], gt[8], gt[9]);
+  // Note, rpy2rot returns C_v_i, where v is vehicle/sensor frame and i is stationary frame
+  // For SE(3) state, we want C_i_v (to match r_i loaded above), and so we take transpose
+  T_mat.block<3, 3>(0, 0) = rpy2rot(gt[7], gt[8], gt[9]).transpose();
   T_mat.block<3, 1>(0, 3) << gt[1], gt[2], gt[3];
 
   EdgeTransform T(T_mat);
@@ -115,6 +108,9 @@ EdgeTransform load_T_enu_radar_init(const fs::path &path) {
 }
 
 int main(int argc, char **argv) {
+  // disable eigen multi-threading
+  Eigen::setNbThreads(1);
+
   rclcpp::init(argc, argv);
   const std::string node_name = "boreas_localization_" + random_string(10);
   auto node = rclcpp::Node::make_shared(node_name);
@@ -243,48 +239,7 @@ int main(int argc, char **argv) {
   CLOG(WARNING, "test") << "Found " << files.size() << " radar data";
 
   // thread handling variables
-  bool play = true;
-  bool terminate = false;
-  int delay = 0;
-
-  // parameters to control the playback
-  // clang-format off
-  play = node->declare_parameter<bool>("control_test.play", play);
-  terminate = node->declare_parameter<bool>("control_test.terminate", terminate);
-  // clang-format on
-  rcl_interfaces::msg::ParameterDescriptor param_desc;
-  rcl_interfaces::msg::IntegerRange delay_range;
-  delay_range.from_value = 0;
-  delay_range.to_value = 100;
-  delay_range.step = 1;
-  param_desc.integer_range.emplace_back(delay_range);
-  delay = node->declare_parameter<int>("control_test.delay_millisec", delay);
-  auto parameter_client = std::make_shared<rclcpp::AsyncParametersClient>(
-      node->get_node_base_interface(), node->get_node_topics_interface(),
-      node->get_node_graph_interface(), node->get_node_services_interface());
-  auto parameter_event_sub = parameter_client->on_parameter_event(
-      [&](const rcl_interfaces::msg::ParameterEvent::SharedPtr event) {
-        for (auto &changed_parameter : event->changed_parameters) {
-          const auto &type = changed_parameter.value.type;
-          const auto &name = changed_parameter.name;
-          const auto &value = changed_parameter.value;
-          CLOG(WARNING, "test")
-              << "Received parameter change event with name: " << name;
-
-          if (type == rcl_interfaces::msg::ParameterType::PARAMETER_INTEGER) {
-            if (name == "control_test.delay_millisec") {
-              delay = value.integer_value;
-            }
-          } else if (type ==
-                     rcl_interfaces::msg::ParameterType::PARAMETER_BOOL) {
-            if (name == "control_test.play") {
-              play = value.bool_value;
-            } else if (name == "control_test.terminate") {
-              terminate = value.bool_value;
-            }
-          }
-        }
-      });
+  TestControl test_control(node);
 
   // main loop
   int frame = 0;
@@ -292,9 +247,10 @@ int main(int argc, char **argv) {
   while (it != files.end()) {
     if (!rclcpp::ok()) break;
     rclcpp::spin_some(node);
-    if (terminate) break;
-    if (!play) continue;
-    std::this_thread::sleep_for(std::chrono::milliseconds(delay));
+    if (test_control.terminate()) break;
+    if (!test_control.play()) continue;
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(test_control.delay()));
 
     ///
     const auto timestamp = getStampFromPath(it->path().string());

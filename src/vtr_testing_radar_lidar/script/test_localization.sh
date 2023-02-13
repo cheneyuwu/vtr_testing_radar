@@ -5,6 +5,11 @@
 # Get arguments
 ODO_INPUT=$1
 LOC_INPUT=$2
+if [ $# -eq 3 ]; then
+  PARAM_FILE=$3
+else
+  PARAM_FILE=${VTRRROOT}/src/vtr_testing_radar_lidar/config/boreas.yaml
+fi
 
 # Log
 echo "Running localization on sequence ${LOC_INPUT} to reference sequence ${ODO_INPUT}, storing result to ${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT}"
@@ -31,7 +36,7 @@ cp -r ${VTRRRESULT}/${ODO_INPUT}/${ODO_INPUT}/*  ${VTRRRESULT}/${ODO_INPUT}/${LO
 ros2 run vtr_testing_radar_lidar vtr_testing_radar_lidar_boreas_localization \
   --ros-args -p use_sim_time:=true \
   -r __ns:=/vtr \
-  --params-file ${VTRRROOT}/src/vtr_testing_radar_lidar/config/boreas.yaml \
+  --params-file ${PARAM_FILE} \
   -p data_dir:=${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT} \
   -p odo_dir:=${VTRRDATA}/${ODO_INPUT} \
   -p loc_dir:=${VTRRDATA}/${LOC_INPUT}

@@ -21,6 +21,31 @@ using namespace vtr::logging;
 using namespace vtr::tactic;
 using namespace vtr::testing;
 
+// Boreas format
+bool get_groundtruth_odometry(const fs::path &path, double t,
+                              std::vector<double> &gt) {
+  std::ifstream ifs(path / "applanix" / "gps_post_process.csv");
+  std::string line;
+  gt.clear();
+  bool gtfound = false;
+  double min_delta = 0.1;
+  std::getline(ifs, line);  // clear out the header
+  while (std::getline(ifs, line)) {
+    std::vector<std::string> parts;
+    boost::split(parts, line, boost::is_any_of(","));
+    double t2 = std::stod(parts[0]);
+    double delta = fabs((t - t2));
+    if (delta < min_delta) {
+      for (uint i = 0; i < parts.size(); ++i) {
+        gt.push_back(std::stod(parts[i]));
+      }
+      gtfound = true;
+      min_delta = delta;
+    }
+  }
+  return gtfound;
+}
+
 float getFloatFromByteArray(char *byteArray, uint index) {
   return *((float *)(byteArray + index));
 }
@@ -58,7 +83,7 @@ std::pair<int64_t, Eigen::MatrixXd> load_lidar(const std::string &path) {
 }
 
 EdgeTransform load_T_robot_lidar(const fs::path &path) {
-#if false
+  // #if true
   std::ifstream ifs(path / "calib" / "T_applanix_lidar.txt", std::ios::in);
 
   Eigen::Matrix4d T_applanix_lidar_mat;
@@ -70,18 +95,18 @@ EdgeTransform load_T_robot_lidar(const fs::path &path) {
 
   EdgeTransform T_robot_lidar(Eigen::Matrix4d(yfwd2xfwd * T_applanix_lidar_mat),
                               Eigen::Matrix<double, 6, 6>::Zero());
-#else
-  Eigen::Matrix4d T_robot_lidar_mat;
-  // clang-format off
-  /// results from HERO paper
-  T_robot_lidar_mat <<  0.68297386,  0.73044281,  0.        ,  0.26      ,
-                       -0.73044281,  0.68297386,  0.        ,  0.        ,
-                        0.        ,  0.        ,  1.        , -0.21      ,
-                        0.        ,  0.        ,  0.        ,  1.        ;
-  // clang-format on
-  EdgeTransform T_robot_lidar(T_robot_lidar_mat,
-                              Eigen::Matrix<double, 6, 6>::Zero());
-#endif
+  // #else
+  //   Eigen::Matrix4d T_robot_lidar_mat;
+  //   // clang-format off
+  //   /// results from HERO paper
+  //   T_robot_lidar_mat <<  0.68297386,  0.73044281,  0.        ,  0.26      ,
+  //                        -0.73044281,  0.68297386,  0.        ,  0.        ,
+  //                         0.        ,  0.        ,  1.        , -0.21      ,
+  //                         0.        ,  0.        ,  0.        ,  1.        ;
+  //   // clang-format on
+  //   EdgeTransform T_robot_lidar(T_robot_lidar_mat,
+  //                               Eigen::Matrix<double, 6, 6>::Zero());
+  // #endif
 
   return T_robot_lidar;
 }
@@ -181,6 +206,11 @@ int main(int argc, char **argv) {
   // main loop
   int frame = 0;
   auto it = files.begin();
+  int64_t timestamp_prev = 0;
+  bool init = true;
+  //   lidar::LidarQueryCache::Ptr query_data;
+  int frame_start = 0;
+  std::advance(it, frame_start);
   while (it != files.end()) {
     if (!rclcpp::ok()) break;
     rclcpp::spin_some(node);
@@ -191,6 +221,13 @@ int main(int argc, char **argv) {
 
     ///
     const auto [timestamp, points] = load_lidar(it->path().string());
+
+    // check for discontinuity in time
+    if (frame > 0 && (timestamp - timestamp_prev) > 5e8) {
+      tactic->addRun();
+      init = true;
+    }
+    timestamp_prev = timestamp;
 
     CLOG(WARNING, "test") << "Loading lidar frame " << frame
                           << " with timestamp " << timestamp;
@@ -222,6 +259,20 @@ int main(int argc, char **argv) {
 
     // execute the pipeline
     tactic->input(query_data);
+
+    if (init) {
+      std::vector<double> gt;
+      const bool gt_found =
+          get_groundtruth_odometry(odo_dir, timestamp * 1.0e-9, gt);
+      CLOG(WARNING, "test") << "gt_found " << gt_found;
+      const double v = sqrt(pow(gt[4], 2) + pow(gt[5], 2) + pow(gt[6], 2));
+      Eigen::Matrix<double, 6, 1> w_m_r_in_r_odo =
+          Eigen::Matrix<double, 6, 1>::Zero();
+      w_m_r_in_r_odo[0] = -v;
+      CLOG(WARNING, "test") << "w_m_r_in_r_odo " << w_m_r_in_r_odo.transpose();
+      *query_data->w_m_r_in_r_odo = w_m_r_in_r_odo;
+      init = false;
+    }
 
     std_msgs::msg::String status_msg;
     status_msg.data = "Finished processing lidar frame " +

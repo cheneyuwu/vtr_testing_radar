@@ -30,7 +30,7 @@ int64_t getStampFromPath(const std::string &path) {
   return time1 * 1000;
 }
 
-EdgeTransform load_T_robot_lidar(const fs::path &path) {
+Eigen::Matrix4d load_T_robot_lidar(const fs::path &path) {
   std::ifstream ifs(path / "calib" / "T_applanix_lidar.txt", std::ios::in);
 
   Eigen::Matrix4d T_applanix_lidar_mat;
@@ -40,13 +40,15 @@ EdgeTransform load_T_robot_lidar(const fs::path &path) {
   Eigen::Matrix4d yfwd2xfwd;
   yfwd2xfwd << 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1;
 
-  EdgeTransform T_robot_lidar(Eigen::Matrix4d(yfwd2xfwd * T_applanix_lidar_mat),
-                              Eigen::Matrix<double, 6, 6>::Zero());
+  //   EdgeTransform T_robot_lidar(Eigen::Matrix4d(yfwd2xfwd *
+  //   T_applanix_lidar_mat),
+  //                               Eigen::Matrix<double, 6, 6>::Zero());
+  return Eigen::Matrix4d(yfwd2xfwd * T_applanix_lidar_mat);
 
-  return T_robot_lidar;
+  //   return T_robot_lidar;
 }
 
-EdgeTransform load_T_robot_radar(const fs::path &path) {
+Eigen::Matrix4d load_T_robot_radar(const fs::path &path) {
 #if true
   std::ifstream ifs1(path / "calib" / "T_applanix_lidar.txt", std::ios::in);
   std::ifstream ifs2(path / "calib" / "T_radar_lidar.txt", std::ios::in);
@@ -62,9 +64,12 @@ EdgeTransform load_T_robot_radar(const fs::path &path) {
   Eigen::Matrix4d yfwd2xfwd;
   yfwd2xfwd << 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1;
 
-  EdgeTransform T_robot_radar(Eigen::Matrix4d(yfwd2xfwd * T_applanix_lidar_mat *
-                                              T_radar_lidar_mat.inverse()),
-                              Eigen::Matrix<double, 6, 6>::Zero());
+  //   EdgeTransform T_robot_radar(Eigen::Matrix4d(yfwd2xfwd *
+  //   T_applanix_lidar_mat *
+  //                                               T_radar_lidar_mat.inverse()),
+  //                               Eigen::Matrix<double, 6, 6>::Zero());
+  return Eigen::Matrix4d(yfwd2xfwd * T_applanix_lidar_mat *
+                         T_radar_lidar_mat.inverse());
 #else
   (void)path;
   // robot frame == radar frame
@@ -72,7 +77,7 @@ EdgeTransform load_T_robot_radar(const fs::path &path) {
                               Eigen::Matrix<double, 6, 6>::Zero());
 #endif
 
-  return T_robot_radar;
+  //   return T_robot_radar;
 }
 
 Eigen::Matrix3d toRoll(const double &r) {
@@ -97,7 +102,7 @@ Eigen::Matrix3d rpy2rot(const double &r, const double &p, const double &y) {
   return toRoll(r) * toPitch(p) * toYaw(y);
 }
 
-EdgeTransform load_T_enu_lidar_init(const fs::path &path) {
+Eigen::Matrix4d load_T_enu_lidar_init(const fs::path &path) {
   std::ifstream ifs(path / "applanix" / "lidar_poses.csv", std::ios::in);
 
   std::string header;
@@ -112,18 +117,17 @@ EdgeTransform load_T_enu_lidar_init(const fs::path &path) {
     gt.push_back(std::stod(str));
 
   Eigen::Matrix4d T_mat = Eigen::Matrix4d::Identity();
-  // Note, rpy2rot returns C_v_i, where v is vehicle/sensor frame and i is stationary frame
-  // For SE(3) state, we want C_i_v (to match r_i loaded above), and so we take transpose
-  T_mat.block<3, 3>(0, 0) = rpy2rot(gt[7], gt[8], gt[9]).transpose();
+  T_mat.block<3, 3>(0, 0) = rpy2rot(gt[7], gt[8], gt[9]);
   T_mat.block<3, 1>(0, 3) << gt[1], gt[2], gt[3];
 
-  EdgeTransform T(T_mat);
-  T.setZeroCovariance();
+  return T_mat;
+  //   EdgeTransform T(T_mat);
+  //   T.setZeroCovariance();
 
-  return T;
+  //   return T;
 }
 
-EdgeTransform load_T_enu_radar_init(const fs::path &path) {
+Eigen::Matrix4d load_T_enu_radar_init(const fs::path &path) {
   std::ifstream ifs(path / "applanix" / "radar_poses.csv", std::ios::in);
 
   std::string header;
@@ -138,15 +142,14 @@ EdgeTransform load_T_enu_radar_init(const fs::path &path) {
     gt.push_back(std::stod(str));
 
   Eigen::Matrix4d T_mat = Eigen::Matrix4d::Identity();
-  // Note, rpy2rot returns C_v_i, where v is vehicle/sensor frame and i is stationary frame
-  // For SE(3) state, we want C_i_v (to match r_i loaded above), and so we take transpose
-  T_mat.block<3, 3>(0, 0) = rpy2rot(gt[7], gt[8], gt[9]).transpose();
+  T_mat.block<3, 3>(0, 0) = rpy2rot(gt[7], gt[8], gt[9]);
   T_mat.block<3, 1>(0, 3) << gt[1], gt[2], gt[3];
 
-  EdgeTransform T(T_mat);
-  T.setZeroCovariance();
+  return T_mat;
+  //   EdgeTransform T(T_mat);
+  //   T.setZeroCovariance();
 
-  return T;
+  //   return T;
 }
 
 int main(int argc, char **argv) {
@@ -238,14 +241,18 @@ int main(int argc, char **argv) {
 
   /// NOTE: odometry is teach, localization is repeat
   auto T_loc_odo_init = [&]() {
-    const auto T_robot_lidar_odo = load_T_robot_lidar(odo_dir);
-    const auto T_enu_lidar_odo = load_T_enu_lidar_init(odo_dir);
+    const Eigen::Matrix4d T_robot_lidar_odo = load_T_robot_lidar(odo_dir);
+    const Eigen::Matrix4d T_enu_lidar_odo = load_T_enu_lidar_init(odo_dir);
 
-    const auto T_robot_radar_loc = load_T_robot_radar(loc_dir);
-    const auto T_enu_radar_loc = load_T_enu_radar_init(loc_dir);
+    const Eigen::Matrix4d T_robot_radar_loc = load_T_robot_radar(loc_dir);
+    const Eigen::Matrix4d T_enu_radar_loc = load_T_enu_radar_init(loc_dir);
 
-    return T_robot_radar_loc * T_enu_radar_loc.inverse() * T_enu_lidar_odo *
-           T_robot_lidar_odo.inverse();
+    EdgeTransform T(
+        Eigen::Matrix4d(T_robot_radar_loc * T_enu_radar_loc.inverse() *
+                        T_enu_lidar_odo * T_robot_lidar_odo.inverse()));
+    // return T_robot_radar_loc * T_enu_radar_loc.inverse() * T_enu_lidar_odo *
+    //        T_robot_lidar_odo.inverse();
+    return T;
   }();
   T_loc_odo_init.setCovariance(Eigen::Matrix<double, 6, 6>::Identity());
   CLOG(WARNING, "test")
@@ -258,14 +265,14 @@ int main(int argc, char **argv) {
   std::string robot_frame = "robot";
   std::string radar_frame = "radar";
 
-  const auto T_robot_radar = load_T_robot_radar(odo_dir);
-  const auto T_radar_robot = T_robot_radar.inverse();
+  const Eigen::Matrix4d T_robot_radar = load_T_robot_radar(odo_dir);
+  const EdgeTransform T_radar_robot(Eigen::Matrix4d(T_robot_radar.inverse()),
+                                    Eigen::Matrix<double, 6, 6>::Zero());
   CLOG(WARNING, "test") << "Transform from " << robot_frame << " to "
                         << radar_frame << " has been set to" << T_radar_robot;
 
   auto tf_sbc = std::make_shared<tf2_ros::StaticTransformBroadcaster>(node);
-  auto msg =
-      tf2::eigenToTransform(Eigen::Affine3d(T_radar_robot.inverse().matrix()));
+  auto msg = tf2::eigenToTransform(Eigen::Affine3d(T_robot_radar));
   msg.header.frame_id = robot_frame;
   msg.child_frame_id = radar_frame;
   tf_sbc->sendTransform(msg);

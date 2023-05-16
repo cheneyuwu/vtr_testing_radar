@@ -77,7 +77,7 @@
     preprocessing:
       conversion:
         type: radar.navtech_extractor
-        radar_resolution: 0.0596
+        radar_resolution: 0.04381
         range_offset: -0.31
         detector: modified_cacfar # choose detector \in (kstrongest, cen2018, cacfar, oscfar, modified_cacfar)
         minr: 2.0 # mininum detection distance
@@ -108,9 +108,9 @@
         modified_cacfar:
           width: 101 # Old: 101, New: 41
           guard: 5 # Old: 5, New: 2
-          threshold: 1.0 # Old: 0.2, New: 1,.0
+          threshold: 0.5 # Old: 0.2, New: 1,.0
           threshold2: 0.0 # Old: 4.0, New: 0.0 cfar: mult of mean, T = threshold * Z + threshold2 * mean + threshold3
-          threshold3: 0.09 # Old: 0.0, New: 0.08
+          threshold3: 0.27 # Old: 0.0, New: 0.08
 
         visualize: true
 

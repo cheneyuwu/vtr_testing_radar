@@ -57,7 +57,7 @@ std::pair<int64_t, Eigen::MatrixXd> load_lidar(const std::string &path) {
   return std::make_pair(timestamp, std::move(pc));
 }
 
-Eigen::Matrix4d load_T_robot_lidar(const fs::path &path) {
+EdgeTransform load_T_robot_lidar(const fs::path &path) {
 #if true
   std::ifstream ifs(path / "calib" / "T_applanix_lidar.txt", std::ios::in);
 
@@ -68,9 +68,8 @@ Eigen::Matrix4d load_T_robot_lidar(const fs::path &path) {
   Eigen::Matrix4d yfwd2xfwd;
   yfwd2xfwd << 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1;
 
-//   EdgeTransform T_robot_lidar(Eigen::Matrix4d(yfwd2xfwd *
-//   T_applanix_lidar_mat),
-//                               Eigen::Matrix<double, 6, 6>::Zero());
+  EdgeTransform T_robot_lidar(Eigen::Matrix4d(yfwd2xfwd * T_applanix_lidar_mat),
+                              Eigen::Matrix<double, 6, 6>::Zero());
 #else
   Eigen::Matrix4d T_robot_lidar_mat;
   // clang-format off
@@ -84,8 +83,7 @@ Eigen::Matrix4d load_T_robot_lidar(const fs::path &path) {
                               Eigen::Matrix<double, 6, 6>::Zero());
 #endif
 
-  //   return T_robot_lidar;
-  return Eigen::Matrix4d(yfwd2xfwd * T_applanix_lidar_mat);
+  return T_robot_lidar;
 }
 
 int main(int argc, char **argv) {
@@ -155,16 +153,14 @@ int main(int argc, char **argv) {
   std::string robot_frame = "robot";
   std::string lidar_frame = "lidar";
 
-  const Eigen::Matrix4d T_robot_lidar = load_T_robot_lidar(odo_dir);
-  //   const auto T_lidar_robot = T_robot_lidar.inverse();
-  const EdgeTransform T_lidar_robot(Eigen::Matrix4d(T_robot_lidar.inverse()),
-                                    Eigen::Matrix<double, 6, 6>::Zero());
-
+  const auto T_robot_lidar = load_T_robot_lidar(odo_dir);
+  const auto T_lidar_robot = T_robot_lidar.inverse();
   CLOG(WARNING, "test") << "Transform from " << robot_frame << " to "
                         << lidar_frame << " has been set to" << T_lidar_robot;
 
   auto tf_sbc = std::make_shared<tf2_ros::StaticTransformBroadcaster>(node);
-  auto msg = tf2::eigenToTransform(Eigen::Affine3d(T_robot_lidar));
+  auto msg =
+      tf2::eigenToTransform(Eigen::Affine3d(T_lidar_robot.inverse().matrix()));
   msg.header.frame_id = robot_frame;
   msg.child_frame_id = lidar_frame;
   tf_sbc->sendTransform(msg);

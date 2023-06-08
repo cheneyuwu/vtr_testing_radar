@@ -17,7 +17,7 @@ SEQUENCES=(
 )
 
 # maximum number of jobs running in parallel
-GROUPSIZE=3
+GROUPSIZE=4
 
 # define the following environment variables VTRR=VTR RaDAR
 export VTRRROOT=${VTRROOT}/vtr_testing_radar # location of this repository CHANGE THIS!

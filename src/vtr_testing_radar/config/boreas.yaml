@@ -173,6 +173,7 @@
         refined_max_planar_dist: 5.0 # phase 2 max planar distance in meters
         averaging_num_steps: 5 # averaging pose change over this number of steps until change is below a threshold at convergence
         huber_delta: 1.0 # huber loss threshold for ICP
+        cauchy_k: 1.0
 
         # steam parameters
         verbose: false
@@ -230,6 +231,7 @@
         refined_max_planar_dist: 5.0
         averaging_num_steps: 5
         huber_delta: 1.0
+        cauchy_k: 1.0
 
         # steam parameters
         verbose: false

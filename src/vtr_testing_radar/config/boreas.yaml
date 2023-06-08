@@ -3,7 +3,7 @@
     ############ system configuration ############
     # Data logging
     log_to_file: true
-    log_debug: false
+    log_debug: true
     log_enabled: [
         ## ADD LOGGER IDS HERE
         # tactic
@@ -17,10 +17,10 @@
         # "radar.navtech_extractor",
         # "radar.preprocessing",
         # "radar.mcransac",
-        # "radar.odometry_icp",
+        "radar.odometry_icp",
         # "radar.vertex_test",
         "radar.localization_map_recall",
-        # "radar.localization_icp",
+        "radar.localization_icp",
       ]
 
     ############ tactic configuration ############
@@ -80,6 +80,7 @@
       conversion:
         type: radar.navtech_extractor
         radar_resolution: 0.0596
+        range_offset: -0.31
         detector: modified_cacfar # choose detector \in (kstrongest, cen2018, cacfar, oscfar, modified_cacfar)
         minr: 2.0 # mininum detection distance
         maxr: 80.0 # maximum detection distance
@@ -118,7 +119,7 @@
       filtering:
         type: radar.preprocessing
 
-        num_threads: 1 # number of threads for nearest neighbor search
+        num_threads: 12 # number of threads for nearest neighbor search
 
         voxel_downsample: false
         frame_voxel_size: 1.0 # grid size for frame voxelization in meters
@@ -162,7 +163,7 @@
         traj_qc_diag: [1.0, 0.0001, 0.0001, 0.0001, 0.0001, 0.01]
 
         # ICP parameters
-        num_threads: 1
+        num_threads: 12
         first_num_steps: 2 # number of steps to with a greater matching distance threshold
         initial_max_iter: 4 # phase 1 max iterations
         initial_max_pairing_dist: 5.0 # phase 1 max pairing distance in meters
@@ -172,6 +173,7 @@
         refined_max_planar_dist: 5.0 # phase 2 max planar distance in meters
         averaging_num_steps: 5 # averaging pose change over this number of steps until change is below a threshold at convergence
         huber_delta: 1.0 # huber loss threshold for ICP
+        cauchy_k: 1.0
 
         # steam parameters
         verbose: false
@@ -219,7 +221,7 @@
         use_pose_prior: true
 
         # ICP parameters
-        num_threads: 1
+        num_threads: 12
         first_num_steps: 2
         initial_max_iter: 4
         initial_max_pairing_dist: 5.0
@@ -229,6 +231,7 @@
         refined_max_planar_dist: 5.0
         averaging_num_steps: 5
         huber_delta: 1.0
+        cauchy_k: 1.0
 
         # steam parameters
         verbose: false

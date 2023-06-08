@@ -112,9 +112,7 @@ EdgeTransform load_T_enu_lidar_init(const fs::path &path) {
     gt.push_back(std::stod(str));
 
   Eigen::Matrix4d T_mat = Eigen::Matrix4d::Identity();
-  // Note, rpy2rot returns C_v_i, where v is vehicle/sensor frame and i is stationary frame
-  // For SE(3) state, we want C_i_v (to match r_i loaded above), and so we take transpose
-  T_mat.block<3, 3>(0, 0) = rpy2rot(gt[7], gt[8], gt[9]).transpose();
+  T_mat.block<3, 3>(0, 0) = rpy2rot(gt[7], gt[8], gt[9]);
   T_mat.block<3, 1>(0, 3) << gt[1], gt[2], gt[3];
 
   EdgeTransform T(T_mat);
@@ -138,9 +136,7 @@ EdgeTransform load_T_enu_radar_init(const fs::path &path) {
     gt.push_back(std::stod(str));
 
   Eigen::Matrix4d T_mat = Eigen::Matrix4d::Identity();
-  // Note, rpy2rot returns C_v_i, where v is vehicle/sensor frame and i is stationary frame
-  // For SE(3) state, we want C_i_v (to match r_i loaded above), and so we take transpose
-  T_mat.block<3, 3>(0, 0) = rpy2rot(gt[7], gt[8], gt[9]).transpose();
+  T_mat.block<3, 3>(0, 0) = rpy2rot(gt[7], gt[8], gt[9]);
   T_mat.block<3, 1>(0, 3) << gt[1], gt[2], gt[3];
 
   EdgeTransform T(T_mat);
@@ -258,7 +254,7 @@ int main(int argc, char **argv) {
   std::string robot_frame = "robot";
   std::string radar_frame = "radar";
 
-  const auto T_robot_radar = load_T_robot_radar(odo_dir);
+  const auto T_robot_radar = load_T_robot_radar(loc_dir);
   const auto T_radar_robot = T_robot_radar.inverse();
   CLOG(WARNING, "test") << "Transform from " << robot_frame << " to "
                         << radar_frame << " has been set to" << T_radar_robot;

@@ -37,7 +37,7 @@ int64_t getStampFromPath(const std::string &path) {
 std::pair<int64_t, Eigen::MatrixXd> load_lidar(const std::string &path) {
   std::ifstream ifs(path, std::ios::binary);
   std::vector<char> buffer(std::istreambuf_iterator<char>(ifs), {});
-  uint float_offset = 4; // float32
+  uint float_offset = 4; // float32 
   uint fields = 7;  // x, y, z, i, r, t, b_id
   uint point_step = float_offset * fields;
   uint N = floor(buffer.size() / point_step);
@@ -58,17 +58,6 @@ std::pair<int64_t, Eigen::MatrixXd> load_lidar(const std::string &path) {
 }
 
 EdgeTransform load_T_robot_lidar(const fs::path &path) {
-#if true
-  // Eigen::Matrix4d T_aeva_vehicle;
-
-  // T_aeva_vehicle << 0.9999366830849237, 0.008341717781538466, 0.0075534496251198685, -1.0119098938516395,
-  //                  -0.008341717774127972, 0.9999652112886684, -3.150635091210066e-05, -0.39658824335171944,
-  //                  -0.007553449599178521, -3.1504388681967066e-05, 0.9999714717963843, -1.697000000000001,
-  //                   0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  1.00000000e+00;
-
-  // EdgeTransform T_lidar_robot(T_aeva_vehicle,
-  //                             Eigen::Matrix<double, 6, 6>::Zero());
-
   std::ifstream ifs(path / "calib" / "T_applanix_aeva.txt", std::ios::in);
 
   Eigen::Matrix4d T_applanix_lidar_mat;
@@ -80,30 +69,56 @@ EdgeTransform load_T_robot_lidar(const fs::path &path) {
 
   EdgeTransform T_robot_lidar(Eigen::Matrix4d(yfwd2xfwd * T_applanix_lidar_mat),
                               Eigen::Matrix<double, 6, 6>::Zero());
-#else
-  Eigen::Matrix4d T_robot_lidar_mat;
-  // clang-format off
-  /// results from our optimization
-  // T_robot_lidar_mat <<  0.998436, -0.014176, -0.054073,  0.836819,
-  //                       0.015548,  0.999566,  0.025037, -0.335448,
-  //                       0.053694, -0.025838,  0.998223,  0.957151,
-  //                       0.,        0.,        0.,        1.      ;
-  /// results from our optimization - keep only x
-  // T_robot_lidar_mat <<  1.0,       0.0,       0.0,       0.836819,
-  //                       0.0,       1.0,       0.0,       0.0,
-  //                       0.0,       0.0,       1.0,       0.0,
-  //                       0.,        0.,        0.,        1.      ;
-  /// results from HERO paper
-  T_robot_lidar_mat <<  0.99997365, -0.00723374, -0.00099997,  0.63984747,
-                        0.00723374,  0.99997365, -0.00000723,  0.41767399,
-                        0.001     ,  0.        ,  1.        , -0.62863152,
-                        0.        ,  0.        ,  0.        ,  1.        ;
-  // clang-format on
-  EdgeTransform T_robot_lidar(T_robot_lidar_mat,
-                              Eigen::Matrix<double, 6, 6>::Zero());
-#endif
 
   return T_robot_lidar;
+}
+
+Eigen::Matrix3d toRoll(const double &r) {
+  Eigen::Matrix3d roll;
+  roll << 1, 0, 0, 0, cos(r), sin(r), 0, -sin(r), cos(r);
+  return roll;
+}
+
+Eigen::Matrix3d toPitch(const double &p) {
+  Eigen::Matrix3d pitch;
+  pitch << cos(p), 0, -sin(p), 0, 1, 0, sin(p), 0, cos(p);
+  return pitch;
+}
+
+Eigen::Matrix3d toYaw(const double &y) {
+  Eigen::Matrix3d yaw;
+  yaw << cos(y), sin(y), 0, -sin(y), cos(y), 0, 0, 0, 1;
+  return yaw;
+}
+
+Eigen::Matrix3d rpy2rot(const double &r, const double &p, const double &y) {
+  return toRoll(r) * toPitch(p) * toYaw(y);
+}
+
+EdgeTransform load_T_enu_lidar_init(const fs::path &path) {
+  std::ifstream ifs(path / "applanix" / "aeva_poses.csv", std::ios::in);
+
+  std::string header;
+  std::getline(ifs, header);
+
+  std::string first_pose;
+  std::getline(ifs, first_pose);
+
+  std::stringstream ss{first_pose};
+  std::vector<double> gt;
+  for (std::string str; std::getline(ss, str, ',');)
+    gt.push_back(std::stod(str));
+
+  Eigen::Matrix4d T_mat = Eigen::Matrix4d::Identity();
+  // Note, rpy2rot returns C_v_i, where v is vehicle/sensor frame and i is stationary frame
+  // For SE(3) state, we want C_i_v (to match r_i loaded above), and so we take transpose
+  T_mat.block<3, 3>(0, 0) = rpy2rot(gt[7], gt[8], gt[9]).transpose();
+  T_mat.block<3, 1>(0, 3) << gt[1], gt[2], gt[3];
+
+  EdgeTransform T(T_mat);
+  T.setZeroCovariance();
+
+  return T;
 }
 
 int main(int argc, char **argv) {
@@ -111,13 +126,18 @@ int main(int argc, char **argv) {
   Eigen::setNbThreads(1);
 
   rclcpp::init(argc, argv);
-  const std::string node_name = "boreas_odometry_" + random_string(10);
+  const std::string node_name = "boreas_localization_" + random_string(10);
   auto node = rclcpp::Node::make_shared(node_name);
 
   // odometry sequence directory
   const auto odo_dir_str =
       node->declare_parameter<std::string>("odo_dir", "/tmp");
   fs::path odo_dir{utils::expand_user(utils::expand_env(odo_dir_str))};
+
+  // localization sequence directory
+  const auto loc_dir_str =
+      node->declare_parameter<std::string>("loc_dir", "/tmp");
+  fs::path loc_dir{utils::expand_user(utils::expand_env(loc_dir_str))};
 
   // Output directory
   const auto data_dir_str =
@@ -138,19 +158,20 @@ int main(int argc, char **argv) {
   configureLogging(log_filename, log_debug, log_enabled);
 
   CLOG(WARNING, "test") << "Odometry Directory: " << odo_dir.string();
+  CLOG(WARNING, "test") << "Localization Directory: " << loc_dir.string();
   CLOG(WARNING, "test") << "Output Directory: " << data_dir.string();
 
   std::vector<std::string> parts;
-  boost::split(parts, odo_dir_str, boost::is_any_of("/"));
+  boost::split(parts, loc_dir_str, boost::is_any_of("/"));
   auto stem = parts.back();
   boost::replace_all(stem, "-", "_");
   CLOG(WARNING, "test") << "Publishing status to topic: "
-                        << (stem + "_lidar_odometry");
+                        << (stem + "_lidar_localization");
   const auto status_publisher = node->create_publisher<std_msgs::msg::String>(
-      stem + "_lidar_odometry", 1);
+      stem + "_lidar_localization", 1);
 
   // Pose graph
-  auto graph = tactic::Graph::MakeShared((data_dir / "graph").string(), false);
+  auto graph = tactic::Graph::MakeShared((data_dir / "graph").string(), true);
 
   // Pipeline
   auto pipeline_factory = std::make_shared<ROSPipelineFactory>(node);
@@ -166,14 +187,50 @@ int main(int argc, char **argv) {
   auto tactic =
       std::make_shared<Tactic>(Tactic::Config::fromROS(node), pipeline,
                                pipeline_output, graph, callback);
-  tactic->setPipeline(PipelineMode::TeachBranch);
+  tactic->setPipeline(PipelineMode::RepeatFollow);
   tactic->addRun();
+
+  // Get the path that we should repeat
+  VertexId::Vector sequence;
+  sequence.reserve(graph->numberOfVertices());
+  CLOG(WARNING, "test") << "Total number of vertices: "
+                        << graph->numberOfVertices();
+  // Extract the privileged sub graph from the full graph.
+  using LocEvaluator = tactic::PrivilegedEvaluator<tactic::GraphBase>;
+  auto evaluator = std::make_shared<LocEvaluator>(*graph);
+  auto privileged_path = graph->getSubgraph(0ul, evaluator);
+  std::stringstream ss;
+  ss << "Repeat vertices: ";
+  for (auto it = privileged_path->begin(0ul); it != privileged_path->end();
+       ++it) {
+    ss << it->v()->id() << " ";
+    sequence.push_back(it->v()->id());
+  }
+  CLOG(WARNING, "test") << ss.str();
+
+  /// NOTE: odometry is teach, localization is repeat
+  auto T_loc_odo_init = [&]() {
+    const auto T_robot_lidar_odo = load_T_robot_lidar(odo_dir);
+    const auto T_enu_lidar_odo = load_T_enu_lidar_init(odo_dir);
+
+    const auto T_robot_lidar_loc = load_T_robot_lidar(loc_dir);
+    const auto T_enu_lidar_loc = load_T_enu_lidar_init(loc_dir);
+
+    return T_robot_lidar_loc * T_enu_lidar_loc.inverse() * T_enu_lidar_odo *
+           T_robot_lidar_odo.inverse();
+  }();
+  T_loc_odo_init.setCovariance(Eigen::Matrix<double, 6, 6>::Identity());
+  CLOG(WARNING, "test")
+      << "Transform from localization to odometry has been set to "
+      << T_loc_odo_init.vec().transpose();
+
+  tactic->setPath(sequence, /* trunk sid */ 0, T_loc_odo_init, true);
 
   // Frame and transforms
   std::string robot_frame = "robot";
   std::string lidar_frame = "lidar";
 
-  const auto T_robot_lidar = load_T_robot_lidar(odo_dir);
+  const auto T_robot_lidar = load_T_robot_lidar(loc_dir);
   const auto T_lidar_robot = T_robot_lidar.inverse();
   CLOG(WARNING, "test") << "Transform from " << robot_frame << " to "
                         << lidar_frame << " has been set to" << T_lidar_robot;
@@ -190,7 +247,7 @@ int main(int argc, char **argv) {
 
   // List of lidar data
   std::vector<fs::directory_entry> files;
-  for (const auto &dir_entry : fs::directory_iterator{odo_dir / "aeva"})
+  for (const auto &dir_entry : fs::directory_iterator{loc_dir / "aeva"})
     if (!fs::is_directory(dir_entry)) files.push_back(dir_entry);
   std::sort(files.begin(), files.end());
   CLOG(WARNING, "test") << "Found " << files.size() << " lidar data";
@@ -248,13 +305,6 @@ int main(int argc, char **argv) {
                       std::to_string(frame) + " with timestamp " +
                       std::to_string(timestamp);
     status_publisher->publish(status_msg);
-
-    if (frame % 100 == 0) {
-      auto plock = tactic->lockPipeline();
-      CLOG(WARNING, "test") << "Saving pose graph.";
-
-      graph->save();
-    }
 
     ++it;
     ++frame;

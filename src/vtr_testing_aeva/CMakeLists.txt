@@ -30,6 +30,9 @@ ament_target_dependencies(${PROJECT_NAME}_aeva_preprocessing rclcpp std_msgs vtr
 add_executable(${PROJECT_NAME}_aeva_odometry src/aeva_odometry.cpp)
 ament_target_dependencies(${PROJECT_NAME}_aeva_odometry rclcpp std_msgs vtr_common vtr_logging vtr_lidar)
 
+add_executable(${PROJECT_NAME}_aeva_localization src/aeva_localization.cpp)
+ament_target_dependencies(${PROJECT_NAME}_aeva_localization rclcpp std_msgs vtr_common vtr_logging vtr_lidar)
+
 install(
   DIRECTORY include/
   DESTINATION include
@@ -39,6 +42,7 @@ install(
   TARGETS
     ${PROJECT_NAME}_aeva_preprocessing
     ${PROJECT_NAME}_aeva_odometry
+    ${PROJECT_NAME}_aeva_localization
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION lib/${PROJECT_NAME}

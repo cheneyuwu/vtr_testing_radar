@@ -38,7 +38,7 @@ std::pair<int64_t, Eigen::MatrixXd> load_lidar(const std::string &path) {
   std::ifstream ifs(path, std::ios::binary);
   std::vector<char> buffer(std::istreambuf_iterator<char>(ifs), {});
   uint float_offset = 4;
-  uint fields = 6;  // x, y, z, i, r, t
+  uint fields = 7;  // x, y, z, i, r, t, b_id
   uint point_step = float_offset * fields;
   uint N = floor(buffer.size() / point_step);
   Eigen::MatrixXd pc(Eigen::MatrixXd::Ones(N, fields));
@@ -58,7 +58,18 @@ std::pair<int64_t, Eigen::MatrixXd> load_lidar(const std::string &path) {
 }
 
 EdgeTransform load_T_robot_lidar(const fs::path &path) {
-#if false
+#if true
+
+  // Eigen::Matrix4d T_aeva_vehicle;
+
+  // T_aeva_vehicle << 0.9999366830849237, 0.008341717781538466, 0.0075534496251198685, -1.0119098938516395,
+  //                  -0.008341717774127972, 0.9999652112886684, -3.150635091210066e-05, -0.39658824335171944,
+  //                  -0.007553449599178521, -3.1504388681967066e-05, 0.9999714717963843, -1.697000000000001,
+  //                   0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  1.00000000e+00;
+
+  // EdgeTransform T_lidar_robot(T_aeva_vehicle,
+  //                             Eigen::Matrix<double, 6, 6>::Zero());
+
   std::ifstream ifs(path / "calib" / "T_applanix_aeva.txt", std::ios::in);
 
   Eigen::Matrix4d T_applanix_lidar_mat;

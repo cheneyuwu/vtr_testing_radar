@@ -16,6 +16,7 @@
         "lidar.pipeline",
         # "lidar.aeva_converter",
         # "lidar.preprocessing",
+        # "lidar.odometry_doppler",
         # "lidar.odometry_icp",
         # "lidar.odometry_map_maintenance",
         # "lidar.vertex_test",
@@ -25,12 +26,12 @@
 
     ############ tactic configuration ############
     tactic:
-      enable_parallelization: false
+      enable_parallelization: true
       preprocessing_skippable: false
       odometry_mapping_skippable: false
       localization_skippable: false
 
-      task_queue_num_threads: 1
+      task_queue_num_threads: 8
       task_queue_size: -1
 
       chain:
@@ -84,7 +85,7 @@
       filtering:
         type: lidar.preprocessing
 
-        num_threads: 1
+        num_threads: 8
 
         crop_range: 60.0
 
@@ -109,7 +110,7 @@
 
     odometry:
       icp:
-        type: lidar.odometry_icp
+        type: lidar.odometry_doppler
 
         # continuous time estimation
         use_trajectory_estimation: true
@@ -128,7 +129,7 @@
         vp_cov: [1000.0, 0.001, 1000.0, 1000.0, 1000.0, 1000.0]
 
         # ICP parameters
-        num_threads: 1
+        num_threads: 8
         first_num_steps: 3
         initial_max_iter: 6
         initial_max_pairing_dist: 3.0
@@ -180,7 +181,7 @@
         use_pose_prior: true
 
         # ICP parameters
-        num_threads: 1
+        num_threads: 8
         first_num_steps: 3
         initial_max_iter: 6
         initial_max_pairing_dist: 5.0

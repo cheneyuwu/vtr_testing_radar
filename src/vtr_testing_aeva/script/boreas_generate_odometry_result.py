@@ -73,36 +73,15 @@ def main(dataset_dir, result_dir):
     return
   print("Looking at result data directory:", data_dir)
 
-  T_applanix_aeva = dataset_odo.sequences[0].calib.T_applanix_aeva
-  print("T_applanix_aeva before:\n", T_applanix_aeva)
-  # this is a correction to the calibration
-  T_agt_apd = np.array([
-      [0.995621, 0.002137, 0.09346, 0.002811],
-      [-0.003235, 0.999928, 0.011597, -0.04655],
-      [-0.093429, -0.011848, 0.995555, 0.128853],
-      [0., 0., 0., 1.],
-  ])
-  T_applanix_aeva = T_agt_apd @ T_applanix_aeva
-  print("T_applanix_aeva after:\n", T_applanix_aeva)
-
   # TODO: robot frame should be at rear-axle of the vehicle, update this!
-  ## old way of getting robot applanix
-  # T_robot_aeva = np.array([[1, 0, 0, 0.836819], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
-  #
 
-  ## new way of getting robot applanix
-  T_applanix_lidar = dataset_odo.sequences[0].calib.T_applanix_lidar
-  T_radar_lidar = dataset_odo.sequences[0].calib.T_radar_lidar
-  T_applanix_radar = T_applanix_lidar @ get_inverse_tf(T_radar_lidar)
-  T_aeva_radar = get_inverse_tf(T_applanix_aeva) @ T_applanix_radar
-  T_radar_robot = np.array([[1, 0, 0, -0.26], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
-  T_robot_aeva = get_inverse_tf(T_aeva_radar @ T_radar_robot)
-  # T_robot_aeva: [[ 0.99997365 -0.00723374 -0.00099997  0.63984747]
-  #               [  0.00723374  0.99997365 -0.00000723  0.41767399]
-  #               [  0.001       0.          1.         -0.62863152]
-  #               [  0.          0.          0.          1.        ]]
+  T_applanix_aeva = dataset_odo.sequences[0].calib.T_applanix_aeva
+  T_robot_applanix = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+  
+  T_robot_aeva = T_robot_applanix @ T_applanix_aeva
+  
+  print("T_applanix_aeva:\n", T_applanix_aeva)
   print("T_robot_aeva should be:\n", T_robot_aeva)
-  T_robot_applanix = T_robot_aeva @ get_inverse_tf(T_applanix_aeva)
 
   # get bag file
   bag_file = '{0}/{1}/{1}_0.db3'.format(osp.abspath(data_dir), "odometry_result")

@@ -14,6 +14,7 @@ find_package(std_msgs REQUIRED)
 find_package(vtr_common REQUIRED)
 find_package(vtr_logging REQUIRED)
 find_package(vtr_lidar REQUIRED)
+find_package(vtr_torch REQUIRED)
 
 ## C++ Libraries
 
@@ -25,13 +26,13 @@ include_directories(
 )
 
 add_executable(${PROJECT_NAME}_aeva_preprocessing src/aeva_preprocessing.cpp)
-ament_target_dependencies(${PROJECT_NAME}_aeva_preprocessing rclcpp std_msgs vtr_common vtr_logging vtr_lidar)
+ament_target_dependencies(${PROJECT_NAME}_aeva_preprocessing rclcpp std_msgs vtr_common vtr_logging vtr_lidar vtr_torch)
 
 add_executable(${PROJECT_NAME}_aeva_odometry src/aeva_odometry.cpp)
-ament_target_dependencies(${PROJECT_NAME}_aeva_odometry rclcpp std_msgs vtr_common vtr_logging vtr_lidar)
+ament_target_dependencies(${PROJECT_NAME}_aeva_odometry rclcpp std_msgs vtr_common vtr_logging vtr_lidar vtr_torch)
 
 add_executable(${PROJECT_NAME}_aeva_localization src/aeva_localization.cpp)
-ament_target_dependencies(${PROJECT_NAME}_aeva_localization rclcpp std_msgs vtr_common vtr_logging vtr_lidar)
+ament_target_dependencies(${PROJECT_NAME}_aeva_localization rclcpp std_msgs vtr_common vtr_logging vtr_lidar vtr_torch)
 
 install(
   DIRECTORY include/

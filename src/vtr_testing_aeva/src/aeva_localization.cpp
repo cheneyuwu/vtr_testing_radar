@@ -73,6 +73,20 @@ EdgeTransform load_T_robot_lidar(const fs::path &path) {
   return T_robot_lidar;
 }
 
+EdgeTransform load_T_lidar_robot() {
+  Eigen::Matrix4d T_lidar_vehicle_mat;
+  T_lidar_vehicle_mat << 0.9999366830849237  ,  0.008341717781538466  ,  0.0075534496251198685, -1.0119098938516395 ,
+                        -0.008341717774127972,  0.9999652112886684    , -3.150635091210066e-05, -0.39658824335171944,
+                        -0.007553449599178521, -3.1504388681967066e-05,  0.9999714717963843   , -1.697000000000001  ,
+                         0                   ,  0                     ,  0                    ,  1                  ;
+  
+  EdgeTransform T_lidar_robot(T_lidar_vehicle_mat,
+                              Eigen::Matrix<double, 6, 6>::Zero());
+
+  CLOG(WARNING, "test") << "t_lid_rob " << T_lidar_robot;
+  return T_lidar_robot;
+}
+
 Eigen::Matrix3d toRoll(const double &r) {
   Eigen::Matrix3d roll;
   roll << 1, 0, 0, 0, cos(r), sin(r), 0, -sin(r), cos(r);
@@ -112,7 +126,7 @@ EdgeTransform load_T_enu_lidar_init(const fs::path &path) {
   Eigen::Matrix4d T_mat = Eigen::Matrix4d::Identity();
   // Note, rpy2rot returns C_v_i, where v is vehicle/sensor frame and i is stationary frame
   // For SE(3) state, we want C_i_v (to match r_i loaded above), and so we take transpose
-  T_mat.block<3, 3>(0, 0) = rpy2rot(gt[7], gt[8], gt[9]).transpose();
+  T_mat.block<3, 3>(0, 0) = rpy2rot(gt[7], gt[8], gt[9]).transpose(); // KP: check this when running loc.! transpose?
   T_mat.block<3, 1>(0, 3) << gt[1], gt[2], gt[3];
 
   EdgeTransform T(T_mat);
@@ -230,8 +244,10 @@ int main(int argc, char **argv) {
   std::string robot_frame = "robot";
   std::string lidar_frame = "lidar";
 
-  const auto T_robot_lidar = load_T_robot_lidar(loc_dir);
-  const auto T_lidar_robot = T_robot_lidar.inverse();
+  // const auto T_robot_lidar = load_T_robot_lidar(odo_dir);
+  // const auto T_lidar_robot = T_robot_lidar.inverse();
+  
+  const auto T_lidar_robot = load_T_lidar_robot();
   CLOG(WARNING, "test") << "Transform from " << robot_frame << " to "
                         << lidar_frame << " has been set to" << T_lidar_robot;
 

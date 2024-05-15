@@ -106,6 +106,103 @@ EdgeTransform load_T_robot_lidar(const fs::path &path) {
   return T_robot_lidar;
 }
 
+EdgeTransform load_T_lidar_robot() {
+  Eigen::Matrix4d T_lidar_vehicle_mat;
+  T_lidar_vehicle_mat << 0.9999366830849237  ,  0.008341717781538466  ,  0.0075534496251198685, -1.0119098938516395 ,
+                        -0.008341717774127972,  0.9999652112886684    , -3.150635091210066e-05, -0.39658824335171944,
+                        -0.007553449599178521, -3.1504388681967066e-05,  0.9999714717963843   , -1.697000000000001  ,
+                         0                   ,  0                     ,  0                    ,  1                  ;
+  
+  EdgeTransform T_lidar_robot(T_lidar_vehicle_mat,                    // transform
+                              Eigen::Matrix<double, 6, 6>::Zero());   // covariance
+  return T_lidar_robot;
+}
+
+bool filecomp (std::string file1, std::string file2) { 
+  long long i = std::stoll(file1.substr(0, file1.find(".")));
+  long long j = std::stoll(file2.substr(0, file2.find(".")));
+  return (i<j); 
+}
+
+std::string getFirstFilename(const std::string& dir_path) {
+    std::string first_filename;
+    std::filesystem::directory_iterator dir_iter(dir_path);
+    if (dir_iter != std::filesystem::directory_iterator()) {
+        first_filename = dir_iter->path().filename().string();
+    }
+    return first_filename;
+}
+
+Eigen::MatrixXd readBoreasGyroToEigenXd(const std::string &file_path, const int64_t& initial_timestamp_micro) {
+  std::ifstream imu_file(file_path);
+  std::vector<std::vector<double>> mat_vec;
+  if (imu_file.is_open()) {
+    std::string line;
+    std::getline(imu_file, line);  // header
+    std::vector<double> row_vec(4);
+    for (; std::getline(imu_file, line);) {
+      if (line.empty()) continue;
+      std::stringstream ss(line);
+
+      int64_t timestamp = 0;
+      double timestamp_sec = 0;
+      double r = 0, p = 0, y = 0;
+      for (int i = 0; i < 4; ++i) {
+        std::string value;
+        std::getline(ss, value, ',');
+
+        if (i == 0) {
+          timestamp = std::stol(value);
+          timestamp_sec = static_cast<double>(timestamp - initial_timestamp_micro)*1e-6;
+        }
+        else if (i == 1)
+          r = std::stod(value);
+        else if (i == 2)
+          p = std::stod(value);
+        else if (i == 3)
+          y = std::stod(value);
+      } // end for row
+      // std::cout << timestamp_sec << ", " << r << ", " << p << ", " << y << std::endl;
+      row_vec[0] = timestamp_sec;
+      row_vec[1] = p;
+      row_vec[2] = r;
+      row_vec[3] = y;
+      mat_vec.push_back(row_vec);
+    } // end for line
+  } // end if
+  else {
+    throw std::runtime_error{"unable to open file: " + file_path};
+  }
+  // output eigen matrix
+  Eigen::MatrixXd output = Eigen::MatrixXd(mat_vec.size(), mat_vec[0].size());
+  for (int i = 0; i < (int)mat_vec.size(); ++i) output.row(i) = Eigen::VectorXd::Map(&mat_vec[i][0], mat_vec[i].size());
+  return output;
+}
+
+std::pair<int64_t, std::vector<Eigen::MatrixXd>> load_gyro(const std::string &path) {
+  std::vector<std::string> filenames_;
+  int64_t initial_timestamp_micro_;
+
+  std::string dir_path_ = path + "/aeva/";
+  auto dir_iter = std::filesystem::directory_iterator(dir_path_);
+  std::count_if(begin(dir_iter), end(dir_iter), [&filenames_](auto &entry) {
+    if (entry.is_regular_file()) filenames_.emplace_back(entry.path().filename().string());
+    return entry.is_regular_file();
+  });
+  std::sort(filenames_.begin(), filenames_.end(), filecomp);  // custom comparison
+
+  initial_timestamp_micro_ = std::stoll(filenames_[0].substr(0, filenames_[0].find(".")));
+
+  std::vector<Eigen::MatrixXd> gyro_data;
+  gyro_data.clear();
+  std::string gyro_path = path + "/applanix/" + "aeva_imu.csv";
+  gyro_data.push_back(readBoreasGyroToEigenXd(gyro_path, initial_timestamp_micro_));
+  CLOG(WARNING, "test") << "Loaded gyro data " << ". Matrix " 
+      << gyro_data.back().rows() << " x " << gyro_data.back().cols() << std::endl;
+
+  return std::make_pair(initial_timestamp_micro_, gyro_data);
+}
+
 int main(int argc, char **argv) {
   // disable eigen multi-threading
   Eigen::setNbThreads(1);
@@ -173,10 +270,15 @@ int main(int argc, char **argv) {
   std::string robot_frame = "robot";
   std::string lidar_frame = "lidar";
 
-  const auto T_robot_lidar = load_T_robot_lidar(odo_dir);
-  const auto T_lidar_robot = T_robot_lidar.inverse();
+  // const auto T_robot_lidar = load_T_robot_lidar(odo_dir);
+  // const auto T_lidar_robot = T_robot_lidar.inverse();
+
+  const auto T_lidar_robot = load_T_lidar_robot();
   CLOG(WARNING, "test") << "Transform from " << robot_frame << " to "
                         << lidar_frame << " has been set to" << T_lidar_robot;
+
+  // Gyroscope data
+  const auto [initial_timestamp_micro_, gyro] = load_gyro(odo_dir);
 
   auto tf_sbc = std::make_shared<tf2_ros::StaticTransformBroadcaster>(node);
   auto msg =
@@ -212,8 +314,8 @@ int main(int argc, char **argv) {
     ///
     const auto [timestamp, points] = load_lidar(it->path().string());
 
-    CLOG(WARNING, "test") << "Loading lidar frame " << frame
-                          << " with timestamp " << timestamp;
+    // CLOG(WARNING, "test") << "Loading lidar frame " << frame
+    //                      << " with timestamp " << timestamp;
 
     // publish clock for sim time
     auto time_msg = rosgraph_msgs::msg::Clock();
@@ -239,6 +341,12 @@ int main(int argc, char **argv) {
 
     // fill in the vehicle to sensor transform and frame name
     query_data->T_s_r.emplace(T_lidar_robot);
+
+    // set gyro data
+    query_data->gyro.emplace(gyro);
+
+    // set timestamp of first frame [ns]
+    query_data->initial_timestamp.emplace(initial_timestamp_micro_);
 
     // execute the pipeline
     tactic->input(query_data);

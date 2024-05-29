@@ -59,16 +59,6 @@ std::pair<int64_t, Eigen::MatrixXd> load_lidar(const std::string &path) {
 
 EdgeTransform load_T_robot_lidar(const fs::path &path) {
 #if true
-  // Eigen::Matrix4d T_aeva_vehicle;
-
-  // T_aeva_vehicle << 0.9999366830849237, 0.008341717781538466, 0.0075534496251198685, -1.0119098938516395,
-  //                  -0.008341717774127972, 0.9999652112886684, -3.150635091210066e-05, -0.39658824335171944,
-  //                  -0.007553449599178521, -3.1504388681967066e-05, 0.9999714717963843, -1.697000000000001,
-  //                   0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  1.00000000e+00;
-
-  // EdgeTransform T_lidar_robot(T_aeva_vehicle,
-  //                             Eigen::Matrix<double, 6, 6>::Zero());
-
   std::ifstream ifs(path / "calib" / "T_applanix_aeva.txt", std::ios::in);
 
   Eigen::Matrix4d T_applanix_lidar_mat;
@@ -270,9 +260,6 @@ int main(int argc, char **argv) {
   std::string robot_frame = "robot";
   std::string lidar_frame = "lidar";
 
-  // const auto T_robot_lidar = load_T_robot_lidar(odo_dir);
-  // const auto T_lidar_robot = T_robot_lidar.inverse();
-
   const auto T_lidar_robot = load_T_lidar_robot();
   CLOG(WARNING, "test") << "Transform from " << robot_frame << " to "
                         << lidar_frame << " has been set to" << T_lidar_robot;
@@ -314,8 +301,12 @@ int main(int argc, char **argv) {
     ///
     const auto [timestamp, points] = load_lidar(it->path().string());
 
-    // CLOG(WARNING, "test") << "Loading lidar frame " << frame
-    //                      << " with timestamp " << timestamp;
+    std::cout << "Frame " << frame << std::endl;
+    // Get the name of the next file
+    int64_t next_file_name;
+    if ((it + 1) != files.end()) {
+      next_file_name = getStampFromPath((it + 1)->path().string());
+    }
 
     // publish clock for sim time
     auto time_msg = rosgraph_msgs::msg::Clock();
@@ -345,8 +336,11 @@ int main(int argc, char **argv) {
     // set gyro data
     query_data->gyro.emplace(gyro);
 
-    // set timestamp of first frame [ns]
+    // set timestamp of first frame [us]
     query_data->initial_timestamp.emplace(initial_timestamp_micro_);
+
+    // set timestamp of next state [ns]
+    query_data->next_state_time.emplace(next_file_name);
 
     // execute the pipeline
     tactic->input(query_data);
@@ -356,13 +350,6 @@ int main(int argc, char **argv) {
                       std::to_string(frame) + " with timestamp " +
                       std::to_string(timestamp);
     status_publisher->publish(status_msg);
-
-    if (frame % 100 == 0) {
-      auto plock = tactic->lockPipeline();
-      CLOG(WARNING, "test") << "Saving pose graph.";
-
-      graph->save();
-    }
 
     ++it;
     ++frame;

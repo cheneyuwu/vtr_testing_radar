@@ -99,9 +99,8 @@ def main(dataset_dir, result_dir):
     timestamp = int(int(message[1].timestamp) / 1000)
     T_w_r_vec = np.array(message[1].t_world_robot.xi)[..., None]
     T_w_r = se3op.vec2tran(T_w_r_vec)
-    T_w_a = T_w_r @ T_robot_applanix
-    T_a_w_res = get_inverse_tf(T_w_a).flatten().tolist()[:12]
-    result.append([timestamp] + T_a_w_res)
+    T_r_w_res = get_inverse_tf(T_w_r).flatten().tolist()[:12]
+    result.append([timestamp] + T_r_w_res)
 
   output_dir = osp.join(result_dir, "odometry_result")
   os.makedirs(output_dir, exist_ok=True)

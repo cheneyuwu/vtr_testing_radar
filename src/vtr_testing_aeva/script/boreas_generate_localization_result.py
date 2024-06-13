@@ -69,10 +69,17 @@ def main(dataset_dir, result_dir):
   for sequence in dataset_odo.sequences:
     # Ground truth is provided w.r.t sensor, so we set sensor to vehicle
     # transform to identity
-    yfwd2xfwd = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
-    T_robot_lidar_odo = yfwd2xfwd @ sequence.calib.T_applanix_aeva
+    T_s_v = np.array([[0.9999366830849237, 0.008341717781538466, 0.0075534496251198685, -1.0119098938516395],
+                  [-0.008341717774127972, 0.9999652112886684, -3.150635091210066e-05, -0.3965882433517194],
+                  [-0.007553449599178521, -3.1504388681967066e-05, 0.9999714717963843, -1.697000000000001],
+                  [0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  1.00000000e+00]]).astype(np.float64)
+
+    # yfwd2xfwd = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+    # T_robot_lidar_odo = yfwd2xfwd @ sequence.calib.T_applanix_aeva
     # T_robot_lidar_odo = sequence.calib.T_applanix_lidar
-    T_lidar_robot_odo = get_inverse_tf(T_robot_lidar_odo)
+    # T_lidar_robot_odo = get_inverse_tf(T_robot_lidar_odo)
+    T_lidar_robot_odo = T_s_v
+    T_robot_lidar_odo = get_inverse_tf(T_lidar_robot_odo)
 
     # build dictionary
     precision = 1e7  # divide by this number to ensure always find the timestamp
@@ -90,10 +97,15 @@ def main(dataset_dir, result_dir):
     for sequence in dataset_loc.sequences:
       # Ground truth is provided w.r.t sensor, so we set sensor to vehicle
       # transform to identity
-      yfwd2xfwd = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
-      T_robot_lidar_loc = yfwd2xfwd @ sequence.calib.T_applanix_aeva
-      # T_robot_lidar_loc = sequence.calib.T_applanix_lidar
-      T_lidar_robot_loc = get_inverse_tf(T_robot_lidar_loc)
+      T_s_v = np.array([[0.9999366830849237, 0.008341717781538466, 0.0075534496251198685, -1.0119098938516395],
+                        [-0.008341717774127972, 0.9999652112886684, -3.150635091210066e-05, -0.3965882433517194],
+                        [-0.007553449599178521, -3.1504388681967066e-05, 0.9999714717963843, -1.697000000000001],
+                        [0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  1.00000000e+00]]).astype(np.float64)
+      # yfwd2xfwd = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
+      # T_robot_lidar_loc = yfwd2xfwd @ sequence.calib.T_applanix_aeva
+      # # T_robot_lidar_loc = sequence.calib.T_applanix_lidar
+      # T_lidar_robot_loc = get_inverse_tf(T_robot_lidar_loc)
+      T_lidar_robot_loc = T_s_v
 
       # build dictionary
       precision = 1e7  # divide by this number to ensure always find the timestamp

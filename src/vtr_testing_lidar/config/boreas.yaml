@@ -3,13 +3,13 @@
     ############ system configuration ############
     # Data logging
     log_to_file: true
-    log_debug: false
+    log_debug: true
     log_enabled: [
         ## ADD LOGGER IDS HERE
         # tactic
         # "tactic",
         # "tactic.pipeline",
-        # "tactic.module",
+        "tactic.module",
         # "tactic.module.live_mem_manager",
         # "tactic.module.graph_mem_manager",
         # pipeline specific
@@ -93,6 +93,7 @@
         crop_range: 60.0
 
         frame_voxel_size: 0.3 # grid subsampling voxel size
+        filter_normal: true
 
         vertical_angle_res: 0.0017453292519943296 # vertical angle resolution in radius (0.1 in degree)
         polar_r_scale: 2.0 # polar_r_scale x vertical_angle_res = nearest neighbor search radius for normal computation
@@ -137,7 +138,7 @@
         initial_max_iter: 6
         initial_max_pairing_dist: 3.0
         initial_max_planar_dist: 1.0
-        refined_max_iter: 100
+        refined_max_iter: 10
         refined_max_pairing_dist: 1.0
         refined_max_planar_dist: 0.3
         averaging_num_steps: 3
@@ -192,7 +193,7 @@
         initial_max_iter: 6
         initial_max_pairing_dist: 5.0
         initial_max_planar_dist: 1.0
-        refined_max_iter: 100
+        refined_max_iter: 10
         refined_max_pairing_dist: 1.0
         refined_max_planar_dist: 0.3
         averaging_num_steps: 3

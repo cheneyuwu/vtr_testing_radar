@@ -15,4 +15,4 @@ source ${VTRROOT}/venv/bin/activate
 #   - dump odometry result to boreas expected format (txt file)
 python ${VTRRROOT}/src/vtr_testing_radar/script/boreas_generate_odometry_result.py --dataset ${VTRRDATA} --path ${VTRRRESULT}/${ODO_INPUT} --velocity
 #   - evaluate the result using the evaluation script
-python -m pyboreas.eval.odometry --gt ${VTRRDATA} --pred ${VTRRRESULT}/${ODO_INPUT} --radar --velocity
+python -m pyboreas.eval.odometry --gt ${VTRRDATA} --pred ${VTRRRESULT}/${ODO_INPUT}/odometry_result --radar --velocity ${VTRRRESULT}/${ODO_INPUT}/odometry_vel_result

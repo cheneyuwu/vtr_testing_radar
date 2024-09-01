@@ -57,45 +57,6 @@ std::pair<int64_t, Eigen::MatrixXd> load_lidar(const std::string &path) {
   return std::make_pair(timestamp, std::move(pc));
 }
 
-EdgeTransform load_T_robot_lidar(const fs::path &path) {
-#if true
-  std::ifstream ifs(path / "calib" / "T_applanix_aeva.txt", std::ios::in);
-
-  Eigen::Matrix4d T_applanix_lidar_mat;
-  for (size_t row = 0; row < 4; row++)
-    for (size_t col = 0; col < 4; col++) ifs >> T_applanix_lidar_mat(row, col);
-
-  Eigen::Matrix4d yfwd2xfwd;
-  yfwd2xfwd << 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1;
-
-  EdgeTransform T_robot_lidar(Eigen::Matrix4d(yfwd2xfwd * T_applanix_lidar_mat),
-                              Eigen::Matrix<double, 6, 6>::Zero());
-#else
-  Eigen::Matrix4d T_robot_lidar_mat;
-  // clang-format off
-  /// results from our optimization
-  // T_robot_lidar_mat <<  0.998436, -0.014176, -0.054073,  0.836819,
-  //                       0.015548,  0.999566,  0.025037, -0.335448,
-  //                       0.053694, -0.025838,  0.998223,  0.957151,
-  //                       0.,        0.,        0.,        1.      ;
-  /// results from our optimization - keep only x
-  // T_robot_lidar_mat <<  1.0,       0.0,       0.0,       0.836819,
-  //                       0.0,       1.0,       0.0,       0.0,
-  //                       0.0,       0.0,       1.0,       0.0,
-  //                       0.,        0.,        0.,        1.      ;
-  /// results from HERO paper
-  T_robot_lidar_mat <<  0.99997365, -0.00723374, -0.00099997,  0.63984747,
-                        0.00723374,  0.99997365, -0.00000723,  0.41767399,
-                        0.001     ,  0.        ,  1.        , -0.62863152,
-                        0.        ,  0.        ,  0.        ,  1.        ;
-  // clang-format on
-  EdgeTransform T_robot_lidar(T_robot_lidar_mat,
-                              Eigen::Matrix<double, 6, 6>::Zero());
-#endif
-
-  return T_robot_lidar;
-}
-
 EdgeTransform load_T_lidar_robot() {
   Eigen::Matrix4d T_lidar_vehicle_mat;
   T_lidar_vehicle_mat << 0.9999366830849237  ,  0.008341717781538466  ,  0.0075534496251198685, -1.0119098938516395 ,

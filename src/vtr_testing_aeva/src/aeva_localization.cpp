@@ -206,8 +206,6 @@ EdgeTransform load_T_enu_lidar_init(const fs::path &path) {
     gt.push_back(std::stod(str));
 
   Eigen::Matrix4d T_mat = Eigen::Matrix4d::Identity();
-  // Note, rpy2rot returns C_v_i, where v is vehicle/sensor frame and i is stationary frame
-  // For SE(3) state, we want C_i_v (to match r_i loaded above), and so we take transpose
   T_mat.block<3, 3>(0, 0) = rpy2rot(gt[7], gt[8], gt[9]);
   T_mat.block<3, 1>(0, 3) << gt[1], gt[2], gt[3];
 
@@ -306,16 +304,12 @@ int main(int argc, char **argv) {
 
   /// NOTE: odometry is teach, localization is repeat
   auto T_loc_odo_init = [&]() {
-    // const auto T_robot_lidar_odo = load_T_robot_lidar(odo_dir);
     const auto T_enu_lidar_odo = load_T_enu_lidar_init(odo_dir);
-
-    // const auto T_robot_lidar_loc = load_T_robot_lidar(loc_dir);
     const auto T_enu_lidar_loc = load_T_enu_lidar_init(loc_dir);
 
     const auto T_lidar_robot = load_T_lidar_robot(); // T_s_v
 
-    return T_lidar_robot * T_enu_lidar_loc.inverse() * T_enu_lidar_odo *
-           T_lidar_robot.inverse();
+    return T_lidar_robot.inverse() * T_enu_lidar_loc.inverse() * T_enu_lidar_odo * T_lidar_robot;
   }();
   T_loc_odo_init.setCovariance(Eigen::Matrix<double, 6, 6>::Identity());
   CLOG(WARNING, "test")

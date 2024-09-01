@@ -5,14 +5,11 @@
 # Get arguments
 ODO_INPUT=$1
 LOC_INPUT=$2
-if [ $# -eq 3 ]; then
-  PARAM_FILE=$3
-else
-  PARAM_FILE=${VTRRROOT}/src/vtr_testing_aeva/config/aeva.yaml
-fi
+TYPE=$3
 
 # Log
 echo "Running localization on sequence ${LOC_INPUT} to reference sequence ${ODO_INPUT}, storing result to ${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT}"
+echo "Using dataset ${TYPE}"
 
 # Source the VTR environment with the testing package
 source ${VTRRROOT}/install/setup.bash
@@ -33,10 +30,10 @@ fi
 rm -r ${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT}
 mkdir -p ${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT}
 cp -r ${VTRRRESULT}/${ODO_INPUT}/${ODO_INPUT}/*  ${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT}
-ros2 run vtr_testing_aeva vtr_testing_aeva_aeva_localization  \
+ros2 run vtr_testing_aeva vtr_testing_aeva_${TYPE}_localization  \
   --ros-args -p use_sim_time:=true \
   -r __ns:=/vtr \
-  --params-file ${PARAM_FILE} \
+  --params-file ${VTRRROOT}/src/vtr_testing_aeva/config/${TYPE}.yaml \
   -p data_dir:=${VTRRRESULT}/${ODO_INPUT}/${LOC_INPUT} \
   -p odo_dir:=${VTRRDATA}/${ODO_INPUT} \
   -p loc_dir:=${VTRRDATA}/${LOC_INPUT}

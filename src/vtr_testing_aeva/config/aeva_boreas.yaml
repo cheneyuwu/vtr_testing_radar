@@ -16,11 +16,11 @@
         "lidar.pipeline",
         # "lidar.aeva_converter",
         # "lidar.preprocessing_doppler",
-        "lidar.odometry_icp",
+        # "lidar.odometry_icp",
         # "lidar.odometry_doppler",
         # "lidar.odometry_map_maintenance",
         # "lidar.vertex_test",
-        "lidar.localization_map_recall",
+        # "lidar.localization_map_recall",
         # "lidar.localization_icp",
       ]
 
@@ -46,8 +46,8 @@
       visualize: false
 
       # localization interval threshold
-      use_loc_threshold: true
-      loc_threshold: 100 # num frames
+      use_loc_threshold: false
+      loc_threshold: 1 # num frames
 
       rviz_loc_path_offset: [0., 0., 0.]
 
@@ -63,8 +63,8 @@
 
       odometry: [
           # odometry and mapping thread modules
-          "icp",
-          # "doppler", 
+          # "icp",
+          "doppler", 
           "mapping",
           "vertex_test",
           "memory",
@@ -90,7 +90,7 @@
       filtering:
         # if using odometry_icp, change type below to `lidar.preprocessing`
         # if using odometry_doppler, change type below to `lidar.preprocessing_doppler`
-        type: lidar.preprocessing
+        type: lidar.preprocessing_doppler
         num_threads: 10
 
         # preprocessing parameters
@@ -123,19 +123,19 @@
         min_dist: 20
         max_dist: 150
         #
-        active_lidars: [false, false, false, true] # 0: front, 1: left, 2: right, 3: back
-        active_gyros: [false, false, false, true]  # 0: front, 1: left, 2: right, 3: back
-        root_path: "/home/asrl-katya/ASRL/doppler_odom/sensor_config/aeva"
-        model_name: "mar4_aeries2_lrvar_bp4-rim_vp3-imv-g_r5-150-e5_s0123_a0p1_aplat_newcalib_redo"
+        active_lidars: [true]   # only one sensor
+        active_gyros: [true]  
+        root_path: "/home/asrl-katya/ASRL/doppler_odom/sensor_config/boreas"    # point this to where we find the model
+        model_name: "mar8_boreas_lrvar_bp4-rim_vp3-imv-g_r5-150-e5_a0p1_aplat"
         downsample_steps: 2 # after image projection 
         #
-        bias_input_feat: ["range", "intensity", "medianrv"]  # "range", "azimuth", "ransac_fvel", "ransac_yvel" ,  "gtvz", "gtox", "gtoy",
-        var_input_feat: ["intensity", "medianrv", "rv_var5"]  # rv_stddev5 "range", "azimuth", "ransac_fvel", "ransac_yvel" ,  "gtvz", "gtox", "gtoy",
+        bias_input_feat: ["range", "intensity", "medianrv"]    # "range", "azimuth", "ransac_fvel", "ransac_yvel" ,  "gtvz", "gtox", "gtoy",
+        var_input_feat: ["intensity", "medianrv", "rv_var5"]   # rv_stddev5 "range", "azimuth", "ransac_fvel", "ransac_yvel" ,  "gtvz", "gtox", "gtoy",
         bias_polyorder: 3
         var_polyorder: 2
-        median_sensorid: 3
-        mm_azi: [-55.0, 55.0] # deg
-        azi_res: 0.2 # deg
+        median_sensorid: 0
+        mm_azi: [-50.0, 50.0] # deg
+        azi_res: 0.2          # deg
 
 
         visualize: false
@@ -149,7 +149,7 @@
         traj_num_extra_states: 0
         traj_lock_prev_pose: true
         traj_lock_prev_vel: false
-        traj_qc_diag: [50.0, 50.0, 50.0, 5.0, 5.0, 5.0] # [1.0, 0.001, 0.001, 0.001, 0.001, 1.0]
+        traj_qc_diag: [50.0, 50.0, 50.0, 5.0, 5.0, 5.0]
 
         use_point_association: false
 
@@ -205,14 +205,9 @@
 
         P0inv: [1e6, 1e6, 1e6, 1e8, 1e8, 1e8]
 
-        # aeva_hq
-        Qkinv: [3.0e+2, 4.1e+3, 1.9e+3, 6.2e+4, 3.6e+4, 4.1e+5]
-        Qzinv: [0.0e0, 1.3e2, 3.2e2, 5.1e4, 5.1e4, 0.0e0]
-
         # aeva_boreas
-        # Qkinv: [124.097194, 852.430330017, 448.704299478, 1128.19639192, 1230.02908934, 11316.9459369] # (t_{k} - t_{k-1})Q_{c}
-        # Qzinv: [0.0, 0.0, 0.0, 14274.3037743, 11121.0286591, 0.0]
-        # # const_gyro_bias: [[-0.004580390732042348, -0.015914139544965403, 0.002919723147493117]]
+        Qkinv: [124.097194, 852.430330017, 448.704299478, 1128.19639192, 1230.02908934, 11316.9459369]
+        Qzinv: [0.0, 0.0, 0.0, 14274.3037743, 11121.0286591, 0.0]
         # const_gyro_bias: [[-0.00424229788086775, -0.01544970808768110, 0.00284478234035327]]
 
         # threshold

@@ -4,9 +4,11 @@
 
 # Get arguments
 ODO_INPUT=$1
+TYPE=$2         # [aeva_hq, aeva_boreas]
 
 # Log
 echo "Running odometry on sequence ${ODO_INPUT}, storing result to ${VTRRRESULT}/${ODO_INPUT}/${ODO_INPUT}"
+echo "Using dataset ${TYPE}"
 
 # Source the VTR environment with the testing package
 source ${VTRRROOT}/install/setup.bash
@@ -24,9 +26,9 @@ if [ -d $graph_dir ]; then
   fi
 fi
 
-ros2 run vtr_testing_aeva vtr_testing_aeva_aeva_odometry \
+ros2 run vtr_testing_aeva vtr_testing_aeva_${TYPE}_odometry \
   --ros-args -p use_sim_time:=true \
   -r __ns:=/vtr \
-  --params-file ${VTRRROOT}/src/vtr_testing_aeva/config/aeva.yaml \
+  --params-file ${VTRRROOT}/src/vtr_testing_aeva/config/${TYPE}.yaml \
   -p data_dir:=${VTRRRESULT}/${ODO_INPUT}/${ODO_INPUT} \
   -p odo_dir:=${VTRRDATA}/${ODO_INPUT}

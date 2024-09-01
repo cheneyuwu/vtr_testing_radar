@@ -59,11 +59,11 @@ def main(dataset_dir, result_dir):
   print("Odometry Run:", odo_input_seq)
   print("Dataset Directory:", dataset_dir)
 
-  try:
-    dataset_odo = BoreasDataset(osp.normpath(dataset_dir), [[odo_input_seq]])
-  except:
-    print("Data set does not exist:", dataset_dir, odo_input_seq)
-    return
+  # try:
+  #   dataset_odo = BoreasDataset(osp.normpath(dataset_dir), [[odo_input_seq]])
+  # except:
+  #   print("Data set does not exist:", dataset_dir, odo_input_seq)
+  #   return
 
   odo_dir = osp.join(result_dir, odo_input_seq)
 
@@ -75,19 +75,24 @@ def main(dataset_dir, result_dir):
 
   # TODO: robot frame should be at rear-axle of the vehicle, update this!
 
-  T_applanix_aeva = dataset_odo.sequences[0].calib.T_applanix_aeva
+  # T_applanix_aeva = dataset_odo.sequences[0].calib.T_applanix_aeva
   T_robot_applanix = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
   
-  T_robot_aeva = T_robot_applanix @ T_applanix_aeva
+  ref = np.array([[1, 0, 0, 0], 
+                [0, -1, 0, 0], 
+                [0, 0, -1, 0], 
+                [0, 0, 0, 1]])
   
-  T_s_v = np.array([[0.9999366830849237, 0.008341717781538466, 0.0075534496251198685, -1.0119098938516395],
-                    [-0.008341717774127972, 0.9999652112886684, -3.150635091210066e-05, -0.3965882433517194],
-                    [-0.007553449599178521, -3.1504388681967066e-05, 0.9999714717963843, -1.697000000000001],
-                    [0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  1.00000000e+00]]).astype(np.float64)
+  # T_robot_aeva = T_robot_applanix @ T_applanix_aeva
   
-  print("T_applanix_aeva:\n", T_applanix_aeva)
-  print("T_robot_aeva should be:\n", T_robot_aeva)  # robot is applanix frame
-  print("T_aeva_vehicle should be:\n", T_s_v)       # vehicle is rear axle
+  # T_s_v = np.array([[0.9999366830849237, 0.008341717781538466, 0.0075534496251198685, -1.0119098938516395],
+  #                   [-0.008341717774127972, 0.9999652112886684, -3.150635091210066e-05, -0.3965882433517194],
+  #                   [-0.007553449599178521, -3.1504388681967066e-05, 0.9999714717963843, -1.697000000000001],
+  #                   [0.00000000e+00,  0.00000000e+00,  0.00000000e+00,  1.00000000e+00]]).astype(np.float64)
+  
+  # print("T_applanix_aeva:\n", T_applanix_aeva)
+  # print("T_robot_aeva should be:\n", T_robot_aeva)  # robot is applanix frame
+  # print("T_aeva_vehicle should be:\n", T_s_v)       # vehicle is rear axle
 
   # get bag file
   bag_file = '{0}/{1}/{1}_0.db3'.format(osp.abspath(data_dir), "odometry_result")

@@ -1,0 +1,42 @@
+# This files sets the parameters required for aeva_boreas_odometry
+# To do: combine with aeva_boreas.yaml! don't want 2 configs
+
+# dataset
+dataset: "boreas_aeva"
+dataset_options:
+  all_sequences: false
+  root_path: "/home/ASRL/data/boreas"
+  sequence: "routeB_run1_binary"
+  bo_path: "/home/asrl-katya/ASRL/doppler_odom/sensor_config/boreas"
+  init_frame: 0
+  last_frame: 100000
+
+  # boreas_aeva-specific
+  active_lidars: [true]
+  active_gyros: [true]
+  const_gyro_bias: [-0.00462907, -0.01570387,  0.00280205]  # UPDATE!!!!!!
+
+# doppler calib
+doppler_options:
+  root_path: "/home/ASRL/Experiments/sensor_config/boreas/"
+  model: "mar8_boreas_lrvar_bp4-rim_vp3-imv-g_r5-150-e5_a0p1_aplat"
+  downsample_steps: 2 # after image projection
+
+# odometry
+odometry: "doppler_filter"
+odometry_options:
+  ransac_max_iter: 40
+  ransac_thres: 0.4
+  ransac_min_dist: 5.0
+  ransac_gyro: false
+  min_dist: 5.0 
+  max_dist: 150.0 
+  integration_steps: 100
+  zero_vel_tol: 0.03
+  P0inv: [1e4, 1e4, 1e4, 1e6, 1e6, 1e6]
+  Qkinv: [124.097194, 852.430330017, 448.704299478, 1128.19639192, 1230.02908934, 11316.9459369]
+  Qzinv: [0.0, 100.0, 100.0, 33271.2755284, 20032.1558168, 0.0]
+
+  # filter-specific
+  downsample_steps: 2 # before image projection
+  

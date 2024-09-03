@@ -81,14 +81,23 @@ Eigen::Matrix3d rpy2rot(const double &r, const double &p, const double &y) {
   return toRoll(r) * toPitch(p) * toYaw(y);
 }
 
-EdgeTransform load_T_enu_radar_init(const fs::path &path) {
+EdgeTransform load_T_enu_radar_init(const fs::path &path, const bool &reverse) {
   std::ifstream ifs(path / "applanix" / "radar_poses.csv", std::ios::in);
 
   std::string header;
   std::getline(ifs, header);
 
   std::string first_pose;
-  std::getline(ifs, first_pose);
+  if (reverse) {
+    std::string last_pose;
+    // If reverse, we want to get last line
+    while (std::getline(ifs, last_pose)) {
+      first_pose = last_pose;
+    }
+
+  } else {
+    std::getline(ifs, first_pose);
+  }
 
   std::stringstream ss{first_pose};
   std::vector<double> gt;
@@ -184,21 +193,30 @@ int main(int argc, char **argv) {
   auto evaluator = std::make_shared<LocEvaluator>(*graph);
   auto privileged_path = graph->getSubgraph(0ul, evaluator);
   std::stringstream ss;
-  ss << "Repeat vertices: ";
+  // ss << "Repeat vertices: ";
+  // Load parameter about whether to run localization in reverse
+  const auto reverse = node->declare_parameter<bool>("boreas.localization.reverse", false);
   for (auto it = privileged_path->begin(0ul); it != privileged_path->end();
        ++it) {
     ss << it->v()->id() << " ";
-    sequence.push_back(it->v()->id());
+    if (reverse) {
+      sequence.insert(sequence.begin(), it->v()->id());
+    }
+    else {
+      sequence.push_back(it->v()->id());
+    }
   }
-  CLOG(WARNING, "test") << ss.str();
+
+  CLOG(WARNING, "test") << "Test vertices: " << ss.str();
+  if (reverse) CLOG(WARNING, "test") << "Running localization in reverse";
 
   /// NOTE: odometry is teach, localization is repeat
   auto T_loc_odo_init = [&]() {
     const auto T_robot_radar_odo = load_T_robot_radar(odo_dir);
-    const auto T_enu_radar_odo = load_T_enu_radar_init(odo_dir);
+    const auto T_enu_radar_odo = load_T_enu_radar_init(odo_dir, reverse);
 
     const auto T_robot_radar_loc = load_T_robot_radar(loc_dir);
-    const auto T_enu_radar_loc = load_T_enu_radar_init(loc_dir);
+    const auto T_enu_radar_loc = load_T_enu_radar_init(loc_dir, false);
 
     return T_robot_radar_loc * T_enu_radar_loc.inverse() * T_enu_radar_odo *
            T_robot_radar_odo.inverse();
@@ -231,7 +249,8 @@ int main(int argc, char **argv) {
 
   // List of radar data
   std::vector<fs::directory_entry> files;
-  for (const auto &dir_entry : fs::directory_iterator{loc_dir / "radar"})
+  const auto radar_dir_name = node->declare_parameter<std::string>("boreas.radar_dir_name", "radar");
+  for (const auto &dir_entry : fs::directory_iterator{loc_dir / radar_dir_name})
     if (!fs::is_directory(dir_entry)) files.push_back(dir_entry);
   std::sort(files.begin(), files.end());
   CLOG(WARNING, "test") << "Found " << files.size() << " radar data";

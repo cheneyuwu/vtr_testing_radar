@@ -46,9 +46,19 @@ EdgeTransform load_T_robot_radar(const fs::path &path) {
   Eigen::Matrix4d yfwd2xfwd;
   yfwd2xfwd << 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1;
 
-  EdgeTransform T_robot_radar(Eigen::Matrix4d(yfwd2xfwd * T_applanix_lidar_mat *
+  // Extrinsic from radar to rear axel
+  Eigen::Matrix4d T_axel_radar;
+  // // Want to estimate at rear axel, this transform has x forward, y right, z down
+  Eigen::Matrix4d T_axel_applanixxfwd;
+  T_axel_applanixxfwd << 1, 0, 0, 0.65,
+                  0.0, 1, 0, 0.770,
+                  0, 0, 1, -1.8,
+                  0, 0, 0, 1;
+
+  EdgeTransform T_robot_radar(Eigen::Matrix4d(T_axel_applanixxfwd * yfwd2xfwd * T_applanix_lidar_mat *
                                               T_radar_lidar_mat.inverse()),
                               Eigen::Matrix<double, 6, 6>::Zero());
+
 #else
   (void)path;
   // robot frame == radar frame

@@ -14,7 +14,8 @@ dataset_options:
   # boreas_aeva-specific
   active_lidars: [true]
   active_gyros: [true]
-  const_gyro_bias: [-0.00462907, -0.01570387,  0.00280205]  # UPDATE!!!!!!
+  const_gyro_bias: [-0.00424229788086775, -0.01544970808768110, 0.00284478234035327]  # UPDATE!!!!!!
+  aeriesII: true
 
 # doppler calib
 doppler_options:

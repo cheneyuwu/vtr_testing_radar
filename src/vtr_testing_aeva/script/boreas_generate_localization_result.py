@@ -54,7 +54,7 @@ class BagFileParser():
 def main(dataset_dir, result_dir):
   result_dir = osp.normpath(result_dir)
   odo_input = osp.basename(result_dir)
-  loc_inputs = [i for i in os.listdir(result_dir) if (i != odo_input and i.startswith("boreas"))]
+  loc_inputs = [i for i in os.listdir(result_dir) if (i != odo_input and i.startswith("2024-"))]
   loc_inputs.sort()
   print("Result Directory:", result_dir)
   print("Odometry Run:", odo_input)

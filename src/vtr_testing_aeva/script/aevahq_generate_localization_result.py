@@ -81,7 +81,6 @@ def main(dataset_dir, result_dir):
   _, times_pred_odo, _ = get_sequence_poses(pred, seq)
   T_gt_odo, times_gt_odo, seq_lens_gt_odo = get_aeva_hq_groundtruth(pdcsv, times_pred_odo) # T_vi
   
-  print(times_pred_odo[0], T_gt_odo[0])
   T_gt_odo = se3.se3_inv(T_lidar_robot @ T_gt_odo) # T_is
   
   precision = 1e7 
@@ -113,8 +112,6 @@ def main(dataset_dir, result_dir):
     times_pred_loc = np.array(times_pred_loc)
 
     T_gt_loc, times_gt_loc, seq_lens_gt_loc = get_aeva_hq_groundtruth(pdcsv, times_pred_loc) # T_vi
-    
-    print(times_pred_loc[0], T_gt_loc[0])
     
     T_gt_loc = se3.se3_inv(T_lidar_robot @ T_gt_loc)
     

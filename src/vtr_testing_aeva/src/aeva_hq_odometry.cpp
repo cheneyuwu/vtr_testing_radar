@@ -36,6 +36,24 @@ YAML::Node loadYamlFile(const std::string& file_path) {
   return config;
 }
 
+std::vector<std::vector<double>> load2DVector(const YAML::Node& node) {
+    std::vector<std::vector<double>> vec;
+
+    if (node.IsSequence()) {
+        for (const auto& innerNode : node) {
+            std::vector<double> innerVec;
+            if (innerNode.IsSequence()) {
+                for (const auto& valueNode : innerNode) {
+                    innerVec.push_back(valueNode.as<double>());
+                }
+                vec.push_back(innerVec);
+            }
+        }
+    }
+
+    return vec;
+}
+
 int64_t getStampFromPath(const std::string &path) {
   std::vector<std::string> parts;
   boost::split(parts, path, boost::is_any_of("/"));
@@ -48,6 +66,24 @@ int64_t getStampFromPath(const std::string &path) {
 Eigen::Vector3d polarToXYZ(double range, double azimuth, double elevation) {
   double xy = range * cos(elevation);
   return Eigen::Vector3d(xy * cos(azimuth), xy * sin(azimuth), range * sin(elevation));
+}
+
+void loadFrameTimes(const std::string& csv_file, std::vector<std::string>& left_times, std::vector<std::string>& right_times) {
+    std::ifstream file(csv_file);
+    std::string line, left, right;
+
+    // Skip the header
+    std::getline(file, line);
+
+    // Read each line from the CSV
+    while (std::getline(file, line)) {
+        std::istringstream ss(line);
+        std::getline(ss, left, ',');
+        std::getline(ss, right, ',');
+
+        left_times.push_back(left);
+        right_times.push_back(right);
+    }
 }
 
 std::pair<int64_t, Eigen::MatrixXd> load_lidar(const std::string &path, double time_delta_sec, int sensor_id, double start_time, double end_time, int64_t filename) {
@@ -320,6 +356,7 @@ int main(int argc, char **argv) {
   Eigen::setNbThreads(1);
 
   // To do: combine with aeva_hq.yaml! don't want 2 configs
+  std::cout << "here" << std::endl;
   std::string yaml_file_path = "external/vtr_testing_radar/src/vtr_testing_aeva/config/aeva_hq_dataset_config.yaml";
   YAML::Node config = loadYamlFile(yaml_file_path);
 
@@ -418,14 +455,34 @@ int main(int argc, char **argv) {
     dir_path_[i] = odo_dir.string() + "/" + lnames[i] + "/";
   }
 
+  std::vector<std::string> left_times;
+  std::vector<std::string> right_times;
+  std::string csv_file = odo_dir.string() + "/" + "frame_times.csv";  // Path to your CSV file
+
+  // Load frame times from CSV
+  loadFrameTimes(csv_file, left_times, right_times);
+
   // get filenames for each sensor (4 sensors total)
   for (int i = 0; i < 4; ++i) {
     filenames_.push_back(std::vector<std::string>());
-    auto dir_iter = std::filesystem::directory_iterator(dir_path_[i]);
-    last_frame_[i] = std::count_if(begin(dir_iter), end(dir_iter), [&](auto &entry) {
-      if (entry.is_regular_file()) filenames_[i].emplace_back(entry.path().filename().string());
-      return entry.is_regular_file();
-    });
+    // For front and back sensors, use filesystem to get filenames
+    if (i == 0 || i == 3) {
+      auto dir_iter = std::filesystem::directory_iterator(dir_path_[i]);
+      last_frame_[i] = std::count_if(begin(dir_iter), end(dir_iter), [&](auto &entry) {
+        if (entry.is_regular_file()) filenames_[i].emplace_back(entry.path().filename().string());
+        return entry.is_regular_file();
+      });
+    }
+    // For left and right sensors, load filenames from CSV
+    else if (i == 1) {  // Left sensor
+      filenames_[i] = left_times;
+      last_frame_[i] = left_times.size();
+    }
+    else if (i == 2) {  // Right sensor
+      filenames_[i] = right_times;
+      last_frame_[i] = right_times.size();
+    }
+    
     std::sort(filenames_[i].begin(), filenames_[i].end(), filecomp);  // custom comparison
   }
 
@@ -495,10 +552,8 @@ int main(int argc, char **argv) {
 
   // main loop
   int frame = 0;
-  int last_frame = 1000000;
   auto it = files.begin();
-
-  while (it != files.end()) {
+  while ((it + 3) != files.end()) {
     if (!rclcpp::ok()) break;
     rclcpp::spin_some(node);
     if (test_control.terminate()) break;
@@ -533,17 +588,11 @@ int main(int argc, char **argv) {
       int64_t time_delta_micro = std::stoll(filename.substr(0, filename.find("."))) - initial_timestamp_micro_;
       double time_delta_sec = static_cast<double>(time_delta_micro) / 1e6;
 
-      int64_t timestamp = (std::stoll(start_name.substr(0, start_name.find(".")))) * 1000;
-      int64_t next_state_time;
-      if (end_name == start_name) {
-        next_state_time = ((std::stoll(start_name.substr(0, start_name.find(".")))) + 100000) * 1000;
-      } else {
-        next_state_time = (std::stoll(end_name.substr(0, end_name.find(".")))) * 1000;
-      }
-
       // skip if inactive
       if (active_lidars[sensor_id] == false)
         continue;
+
+      int64_t timestamp = (std::stoll(filename.substr(0, filename.find(".")))) * 1000;
 
       // load and concatenate
       const auto [time, frame] = load_lidar(dir_path_[sensor_id] + filename, time_delta_sec, sensor_id, start_time, end_time, timestamp);
@@ -655,6 +704,11 @@ int main(int argc, char **argv) {
 
     ++it;
     ++frame;
+    if ((it + 3) == files.end()) {
+      CLOG(WARNING, "test") << "Saving pose graph.";
+      graph->save();
+    }
+
   }
 
   rclcpp::shutdown();

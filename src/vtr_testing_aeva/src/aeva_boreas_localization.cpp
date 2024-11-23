@@ -97,6 +97,7 @@ std::vector<Eigen::MatrixXd> loadElevationOrder(const std::string &bo_path) {
 }
 
 std::pair<int64_t, Eigen::MatrixXd> load_lidar(const std::string &path, const std::string &bo_path, double time_delta_sec, double start_time, double end_time, int64_t filename) {
+  // load Aeries I pointcloud
   std::ifstream ifs(path, std::ios::binary);
   std::vector<char> buffer(std::istreambuf_iterator<char>(ifs), {});
   unsigned float_offset = 4; // float32
@@ -184,12 +185,99 @@ std::pair<int64_t, Eigen::MatrixXd> load_lidar(const std::string &path, const st
   return std::make_pair(fields, pc);
 }
 
-EdgeTransform load_T_lidar_robot() {
+std::pair<int64_t, Eigen::MatrixXd> load_new_lidar(const std::string &path, double time_delta_sec, double start_time, double end_time, int64_t filename) {
+  // load Aeries II pointcloud
+  std::ifstream ifs(path, std::ios::binary);
+  std::vector<char> buffer(std::istreambuf_iterator<char>(ifs), {});
+  unsigned float_offset = 4; // float32
+  unsigned fields = 10;  // x, y, z, radial velocity, intensity, signal quality, reflectivity, time, beam_id, line_id
+  unsigned point_step = float_offset * fields;
+  unsigned N = floor(buffer.size() / point_step);
+
+  std::vector<Eigen::VectorXd> points; // Vector to store valid points dynamically
+
+  auto getFloatFromByteArray = [](char *byteArray, unsigned index) -> float {
+    return *((float *)(byteArray + index));
+  };
+
+  for (unsigned i(0); i < N; i++) {
+    int bufpos = i * point_step;
+    int offset = 0;
+
+    // Temporary variables
+    double x, y, z, radial_velocity, intensity, time_temp;
+    int64_t time_keep;
+    int beam_id, line_id, face_id, sensor_id;
+
+    // x, y, z
+    x = getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset);
+    ++offset;
+    y = getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset);
+    ++offset;
+    z = getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset);
+
+    ++offset;
+    // Radial velocity
+    radial_velocity = getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset);
+    ++offset;
+    // Intensity
+    intensity = getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset);
+    ++offset;
+    // Skip signal quality
+    ++offset;
+    // Skip reflectivity
+    ++offset;
+    // Timestamp
+    time_temp = (int64_t)(getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset)); // nanosec
+    double t = double(filename);
+    time_keep = (int64_t)(time_temp + t);
+    time_temp = time_temp * 1e-9 + time_delta_sec;
+    ++offset;
+    // Point Flags (64 bits)
+    uint64_t point_flags = getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset);
+
+    // Extract flags
+    line_id = 63 - (point_flags >> 8) & 0xFF;
+    beam_id = (point_flags >> 16) & 0xF;
+    face_id = (point_flags >> 22) & 0xF;
+
+    // Error checks
+    if (line_id < 0 || line_id >= 64) continue;
+    if (face_id < 0 || face_id > 5) continue;
+
+    // Sensor id - only one sensor
+    sensor_id = 0;
+
+    // Include if within start and end time
+    if (time_temp > start_time && time_temp <= end_time) {
+        Eigen::VectorXd point(10);
+        point << x, y, z, radial_velocity, intensity, time_keep, beam_id, line_id, face_id, sensor_id;
+        points.push_back(point);
+    }
+  }
+
+  // Convert vector to Eigen::MatrixXd
+  Eigen::MatrixXd pc(points.size(), 10);
+  for (size_t k = 0; k < points.size(); ++k) {
+    pc.row(k) = points[k];
+  }
+  return std::make_pair(fields, pc);
+}
+
+EdgeTransform load_T_lidar_robot(bool new_lidar) {
   Eigen::Matrix4d T_lidar_vehicle_mat;
-  T_lidar_vehicle_mat << 0.9999366830849237  ,  0.008341717781538466  ,  0.0075534496251198685, -1.0119098938516395 ,
-                        -0.008341717774127972,  0.9999652112886684    , -3.150635091210066e-05, -0.39658824335171944,
-                        -0.007553449599178521, -3.1504388681967066e-05,  0.9999714717963843   , -1.697000000000001  ,
-                         0                   ,  0                     ,  0                    ,  1                  ;
+  if (new_lidar) {
+    // TO DO: update this matrix
+    T_lidar_vehicle_mat << 0.99955873, 0.0291333, 0.00579651, -1.03982001,
+                          -0.02919181, 0.99952097, 0.01027901, -0.38035841,
+                          -0.00549427, -0.01044368, 0.99993037, -1.69798033,
+                           0, 0, 0, 1;
+    } else {
+    T_lidar_vehicle_mat << 0.9999366830849237, 0.008341717781538466, 0.0075534496251198685, -1.0119098938516395,
+                          -0.008341717774127972, 0.9999652112886684, -3.150635091210066e-05, -0.39658824335171944,
+                          -0.007553449599178521, -3.1504388681967066e-05, 0.9999714717963843, -1.697000000000001,
+                           0, 0, 0, 1;
+  }
   
   EdgeTransform T_lidar_robot(T_lidar_vehicle_mat,                    // transform
                               Eigen::Matrix<double, 6, 6>::Zero());   // covariance
@@ -367,19 +455,19 @@ int main(int argc, char **argv) {
   // disable eigen multi-threading
   Eigen::setNbThreads(1);
 
-  // To do: combine with aeva_boreas.yaml! don't want 2 configs
-  std::string yaml_file_path = "external/vtr_testing_radar/src/vtr_testing_aeva/config/aeva_boreas_dataset_config.yaml";
+  // TO DO: combine with aeva_boreas.yaml! don't want 2 configs
+  std::string yaml_file_path = "external/vtr_testing_radar/src/vtr_testing_aeva/config/aeva_boreas.yaml";
   YAML::Node config = loadYamlFile(yaml_file_path);
 
   // load options
   int init_frame = 0;
   int last_frame = 100000;
-  std::vector<double> temp = config["dataset_options"]["const_gyro_bias"].as<std::vector<double>>();;
+  bool aeriesII = config["/**"]["ros__parameters"]["aeriesII"].as<bool>();
+  std::vector<double> temp = config["/**"]["ros__parameters"]["preprocessing"]["filtering"]["const_gyro_bias"].as<std::vector<double>>();
   std::vector<Eigen::Vector3d> const_gyro_bias;
   for (size_t i = 0; i < temp.size(); i += 3) {
     const_gyro_bias.push_back(Eigen::Vector3d(temp[i], temp[i+1], temp[i+2]));
   }
-  std::string bo_path = config["dataset_options"]["bo_path"].as<std::string>();
 
   rclcpp::init(argc, argv);
   const std::string node_name = "boreas_localization_" + random_string(10);
@@ -422,9 +510,9 @@ int main(int argc, char **argv) {
   auto stem = parts.back();
   boost::replace_all(stem, "-", "_");
   CLOG(WARNING, "test") << "Publishing status to topic: "
-                        << (stem + "_lidar_localization");
+                        << ("aeva_" + stem + "_lidar_localization");
   const auto status_publisher = node->create_publisher<std_msgs::msg::String>(
-      stem + "_lidar_localization", 1);
+      "aeva_" + stem + "_lidar_localization", 1);
 
   // Pose graph
   auto graph = tactic::Graph::MakeShared((data_dir / "graph").string(), true);
@@ -469,7 +557,7 @@ int main(int argc, char **argv) {
     const auto T_enu_lidar_odo = load_T_enu_lidar_init(odo_dir);
     const auto T_enu_lidar_loc = load_T_enu_lidar_init(loc_dir);
 
-    const auto T_lidar_robot = load_T_lidar_robot(); // T_s_v
+    const auto T_lidar_robot = load_T_lidar_robot(aeriesII); // T_s_v
 
     return T_lidar_robot.inverse() * T_enu_lidar_loc.inverse() * T_enu_lidar_odo * T_lidar_robot;
   }();
@@ -484,7 +572,7 @@ int main(int argc, char **argv) {
   std::string robot_frame = "robot";
   std::string lidar_frame = "lidar";
   
-  const auto T_lidar_robot = load_T_lidar_robot();
+  const auto T_lidar_robot = load_T_lidar_robot(aeriesII);
   CLOG(WARNING, "test") << "Transform from " << robot_frame << " to "
                         << lidar_frame << " has been set to" << T_lidar_robot;
 
@@ -547,7 +635,7 @@ int main(int argc, char **argv) {
   // main loop
   int frame = 0;
   auto it = files.begin();
-  while (it != files.end()) {
+  while (it + 1 != files.end()) {
     if (!rclcpp::ok()) break;
     rclcpp::spin_some(node);
     if (test_control.terminate()) break;
@@ -555,7 +643,7 @@ int main(int argc, char **argv) {
     std::this_thread::sleep_for(
         std::chrono::milliseconds(test_control.delay()));
 
-    CLOG(WARNING, "test") << "Loading lidar frame " << frame;
+    std::cout << frame << std::endl;
 
     const auto filename = getStampFromPath((it)->path().string());
     int64_t time_delta_micro = filename / 1000 - initial_timestamp_micro_;
@@ -573,9 +661,15 @@ int main(int argc, char **argv) {
     }
     int64_t start_name = filename;
     
-    auto [fields, points] = load_lidar(it->path().string(), bo_path, time_delta_sec, start_time, end_time, start_name);
-    
-    CLOG(WARNING, "TEST") << "#pts " << points.size();
+    Eigen::MatrixXd points;
+    if (aeriesII) {
+      // load Aeries II boreas pointcloud
+      std::tie(std::ignore, points) = load_new_lidar(it->path().string(), time_delta_sec, start_time, end_time, start_name);
+    } else {
+      // Beam Order Path
+      std::string bo_path = config["/**"]["ros__parameters"]["bo_path"].as<std::string>();
+      auto [fields, points] = load_lidar(it->path().string(), bo_path, time_delta_sec, start_time, end_time, start_name);
+    }
 
     // load gyro data
     double dt = 0.1;
@@ -591,7 +685,6 @@ int main(int argc, char **argv) {
         if (inds.size() == 0) {
         // no measurements
         current_gyro.push_back(Eigen::Matrix<double, 1, 1>());  // 1x1 zero matrix
-        CLOG(WARNING, "test") << "grabbing gyro " << sensorid << ", no gyro data" << std::endl;
         continue;
         }
 
@@ -602,8 +695,6 @@ int main(int argc, char **argv) {
         temp_gyro.row(r).rightCols<3>() -= const_gyro_bias[0].transpose();  // apply gyro bias
         }
         current_gyro.push_back(temp_gyro);
-        CLOG(WARNING, "test") << "grabbing gyro " << sensorid << ", " << current_gyro.back().rows() << " x " << current_gyro.back().cols() 
-        << ". Start time: " << current_gyro.back()(0, 0) << ", " << "end time: " << current_gyro.back()(inds.size()-1, 0) << std::endl;
     } // end for sensorid  
 
     // publish clock for sim time

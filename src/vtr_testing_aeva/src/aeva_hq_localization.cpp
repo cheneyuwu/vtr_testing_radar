@@ -42,20 +42,37 @@ YAML::Node loadYamlFile(const std::string& file_path) {
   return config;
 }
 
-int64_t utc_to_nanos_of_week(int64_t times_sec) {
-    const int64_t NS_PER_SEC = 1e9;
-    const double SECONDS_PER_WEEK = 60.0 * 60.0 * 24.0 * 7.0;
-
-    int64_t gps_sec = times_sec - 315964800 + 18;
-    int64_t gps_ns = gps_sec * NS_PER_SEC;
-    double ns_per_week = SECONDS_PER_WEEK * NS_PER_SEC;
-
-    return static_cast<double>(fmod(gps_ns, ns_per_week));
+int64_t utc_to_nanos_of_week(double times_sec) {
+    double gps_sec = times_sec - 315964800 + 18;
+    int64_t gps_ns = static_cast<int64_t>(gps_sec * 1e9);  // Cast to int64_t for precision
+    int64_t NS_PER_WEEK = static_cast<int64_t>(60.0 * 60.0 * 24.0 * 7.0 * 1e9);
+    int64_t gps_week_num = gps_ns / NS_PER_WEEK;
+    int64_t ns_to_start_of_week = gps_week_num * NS_PER_WEEK;
+    int64_t nanos_of_week = gps_ns % NS_PER_WEEK;  // Use integer modulus for accurate result
+    return nanos_of_week;
 }
 
 Eigen::Vector3d polarToXYZ(double range, double azimuth, double elevation) {
   double xy = range * cos(elevation);
   return Eigen::Vector3d(xy * cos(azimuth), xy * sin(azimuth), range * sin(elevation));
+}
+
+void loadFrameTimes(const std::string& csv_file, std::vector<std::string>& left_times, std::vector<std::string>& right_times) {
+    std::ifstream file(csv_file);
+    std::string line, left, right;
+
+    // Skip the header
+    std::getline(file, line);
+
+    // Read each line from the CSV
+    while (std::getline(file, line)) {
+        std::istringstream ss(line);
+        std::getline(ss, left, ',');
+        std::getline(ss, right, ',');
+
+        left_times.push_back(left);
+        right_times.push_back(right);
+    }
 }
 
 std::pair<int64_t, Eigen::MatrixXd> load_lidar(const std::string &path, double time_delta_sec, int sensor_id, double start_time, double end_time, int64_t filename) {
@@ -277,20 +294,38 @@ bool sync_frames(std::vector<std::vector<std::string>>& filenames, int (&init_fr
   }
 }
 
-double getOdoInitTime(const std::string dir_odo[4]) {
+double getOdoInitTime(const std::string dir_odo[4], std::string csv) {
   std::vector<std::vector<std::string>> filenames_odo;
   int init_frame_odo[4] = {0};
   int curr_frame_odo[4] = {0};
   int last_frame_odo[4] = {std::numeric_limits<int>::max()};  // exclusive bound
-  
+
+  std::vector<std::string> left_timeso;
+  std::vector<std::string> right_timeso;
+
+  loadFrameTimes(csv, left_timeso, right_timeso);
+
   // get filenames for each sensor (4 sensors total)
   for (int i = 0; i < 4; ++i) {
     filenames_odo.push_back(std::vector<std::string>());
-    auto dir_iter = std::filesystem::directory_iterator(dir_odo[i]);
-    last_frame_odo[i] = std::count_if(begin(dir_iter), end(dir_iter), [&](auto &entry) {
-      if (entry.is_regular_file()) filenames_odo[i].emplace_back(entry.path().filename().string());
-      return entry.is_regular_file();
-    });
+    // For front and back sensors, use filesystem to get filenames
+    if (i == 0 || i == 3) {
+      auto dir_iter = std::filesystem::directory_iterator(dir_odo[i]);
+      last_frame_odo[i] = std::count_if(begin(dir_iter), end(dir_iter), [&](auto &entry) {
+        if (entry.is_regular_file()) filenames_odo[i].emplace_back(entry.path().filename().string());
+        return entry.is_regular_file();
+      });
+    }
+    // For left and right sensors, load filenames from CSV
+    else if (i == 1) {  // Left sensor
+      filenames_odo[i] = left_timeso;
+      last_frame_odo[i] = left_timeso.size();
+    }
+    else if (i == 2) {  // Right sensor
+      filenames_odo[i] = right_timeso;
+      last_frame_odo[i] = right_timeso.size();
+    }
+    
     std::sort(filenames_odo[i].begin(), filenames_odo[i].end(), filecomp);  // custom comparison
   }
 
@@ -300,7 +335,6 @@ double getOdoInitTime(const std::string dir_odo[4]) {
 
   // set initial time to keep floats small
   double initial_timestamp_micro = std::stoll(filenames_odo[0][init_frame_odo[0]].substr(0, filenames_odo[0][init_frame_odo[0]].find(".")));
-  CLOG(WARNING, "test") << initial_timestamp_micro;
   return initial_timestamp_micro;
 }
 
@@ -464,16 +498,9 @@ EdgeTransform load_T_robot_enu_init(const std::string &path, const double start_
       (pose * T_ref.inverse()).inverse()
       );
   }
-
   std::vector<Eigen::Matrix4d> T_gt;
   wnoa_interp_traj(times_gt, raw_Tiv, varpi_gt, query_time, T_gt);
-
-  std::cout << T_gt[0] << std::endl;
-
   Eigen::Matrix4d T_mat = T_r_app * (T_gt[0]).inverse(); // T_vi
-
-  std::cout << std::setprecision(20) << start_time_sec * 1e6 << std::endl;
-  std::cout << T_mat << std::endl;
 
   EdgeTransform T(T_mat);
   T.setZeroCovariance();
@@ -614,16 +641,37 @@ int main(int argc, char **argv) {
     dir_odo[i] = odo_dir.string() + "/" + lnames[i] + "/";
   }
 
-  double initial_timestamp_micro_odo = getOdoInitTime(dir_odo);
+  std::string odo_csv = odo_dir.string() + "/" + "frame_times.csv";
+  double initial_timestamp_micro_odo = getOdoInitTime(dir_odo, odo_csv);
+
+  std::vector<std::string> left_times;
+  std::vector<std::string> right_times;
+  std::string csv_file = loc_dir.string() + "/" + "frame_times.csv";
+
+  // Load frame times from CSV
+  loadFrameTimes(csv_file, left_times, right_times);
 
   // get filenames for each sensor (4 sensors total)
   for (int i = 0; i < 4; ++i) {
     filenames_.push_back(std::vector<std::string>());
-    auto dir_iter = std::filesystem::directory_iterator(dir_path_[i]);
-    last_frame_[i] = std::count_if(begin(dir_iter), end(dir_iter), [&](auto &entry) {
-      if (entry.is_regular_file()) filenames_[i].emplace_back(entry.path().filename().string());
-      return entry.is_regular_file();
-    });
+    // For front and back sensors, use filesystem to get filenames
+    if (i == 0 || i == 3) {
+      auto dir_iter = std::filesystem::directory_iterator(dir_path_[i]);
+      last_frame_[i] = std::count_if(begin(dir_iter), end(dir_iter), [&](auto &entry) {
+        if (entry.is_regular_file()) filenames_[i].emplace_back(entry.path().filename().string());
+        return entry.is_regular_file();
+      });
+    }
+    // For left and right sensors, load filenames from CSV
+    else if (i == 1) {  // Left sensor
+      filenames_[i] = left_times;
+      last_frame_[i] = left_times.size();
+    }
+    else if (i == 2) {  // Right sensor
+      filenames_[i] = right_times;
+      last_frame_[i] = right_times.size();
+    }
+    
     std::sort(filenames_[i].begin(), filenames_[i].end(), filecomp);  // custom comparison
   }
 
@@ -646,16 +694,14 @@ int main(int argc, char **argv) {
 
   // set initial time to keep floats small
   initial_timestamp_micro_ = std::stoll(filenames_[0][init_frame_[0]].substr(0, filenames_[0][init_frame_[0]].find(".")));
-  CLOG(WARNING, "test") << initial_timestamp_micro_;
 
   /// NOTE: odometry is teach, localization is repeat
   auto T_loc_odo_init = [&]() {
-    const auto T_robot_enu_odo = load_T_robot_enu_init(odo_dir.string(), (double)(initial_timestamp_micro_odo) / 1e6); // T_vi
-    const auto T_robot_enu_loc = load_T_robot_enu_init(loc_dir.string(), initial_timestamp_micro_ / 1e6);    // T_vi
+    const auto T_robot_enu_odo = load_T_robot_enu_init(odo_dir.string(), (double)(initial_timestamp_micro_odo / 1e6)); // T_vi
+    const auto T_robot_enu_loc = load_T_robot_enu_init(loc_dir.string(), (double)(initial_timestamp_micro_ / 1e6));    // T_vi
 
     const auto T_lidar_robot = load_T_lidar_robot(xi_sv); // T_s_v of back sensor (best)
 
-    // return T_lidar_robot.inverse() * T_enu_lidar_loc.inverse() * T_enu_lidar_odo * T_lidar_robot; 
     return T_robot_enu_loc * T_robot_enu_odo.inverse();
   }();
   T_loc_odo_init.setCovariance(Eigen::Matrix<double, 6, 6>::Identity());
@@ -673,7 +719,7 @@ int main(int argc, char **argv) {
     std::string gyro_path = loc_dir.string() + "/" + lnames[i] + "_imu.csv";
     gyro_data_.push_back(readGyroToEigenXd(gyro_path, initial_timestamp_micro_, "aeva_hq"));
     gyro_data_.back().rightCols<3>() *= -1.0; // flip reference frame
-    LOG(INFO) << "Loaded gyro data " << ". Matrix " 
+    CLOG(WARNING, "test") << "Loaded gyro data " << ". Matrix " 
         << gyro_data_.back().rows() << " x " << gyro_data_.back().cols() << std::endl;
 
     // calibrate gyro bias using first N measurements while stationary
@@ -701,7 +747,7 @@ int main(int argc, char **argv) {
 
   // List of lidar data
   std::vector<fs::directory_entry> files;
-  for (const auto &dir_entry : fs::directory_iterator{loc_dir / lnames[3]})
+  for (const auto &dir_entry : fs::directory_iterator{loc_dir / lnames[3]}) // hardcoded for back sensor // here
     if (!fs::is_directory(dir_entry)) files.push_back(dir_entry);
   std::sort(files.begin(), files.end());
   CLOG(WARNING, "test") << "Found " << files.size() << " lidar data";
@@ -711,7 +757,6 @@ int main(int argc, char **argv) {
 
   // main loop
   int frame = 0;
-  int last_frame = 1000000;
   auto it = files.begin();
   
   while (it != files.end()) {
@@ -743,21 +788,15 @@ int main(int argc, char **argv) {
     for (int sensor_id = 0; sensor_id < 4; ++sensor_id) {
       // frame_id, filename, and start time
       int curr_frame = curr_frame_[sensor_id]++;  // grab frame id and increment after
-      auto& filename = filenames_[sensor_id].at(curr_frame);
+      auto& filename = filenames_[sensor_id].at(frame);
       int64_t time_delta_micro = std::stoll(filename.substr(0, filename.find("."))) - initial_timestamp_micro_;
       double time_delta_sec = static_cast<double>(time_delta_micro) / 1e6;
-
-      int64_t timestamp = (std::stoll(start_name.substr(0, start_name.find(".")))) * 1000;
-      int64_t next_state_time;
-      if (end_name == start_name) {
-        next_state_time = ((std::stoll(start_name.substr(0, start_name.find(".")))) + 100000) * 1000;
-      } else {
-        next_state_time = (std::stoll(end_name.substr(0, end_name.find(".")))) * 1000;
-      }
 
       // skip if inactive
       if (active_lidars[sensor_id] == false)
         continue;
+
+      int64_t timestamp = (std::stoll(filename.substr(0, filename.find(".")))) * 1000;    
 
       // load and concatenate
       const auto [time, frame] = load_lidar(dir_path_[sensor_id] + filename, time_delta_sec, sensor_id, start_time, end_time, timestamp);
@@ -795,7 +834,7 @@ int main(int argc, char **argv) {
 
       if (inds.size() == 0) {   // no measurements
         current_gyro.push_back(Eigen::MatrixXd(0, 0));  // empty matrix
-        CLOG(WARNING, "test") << "grabbing gyro " << sensorid << ", no gyro data" << std::endl;
+        // CLOG(WARNING, "test") << "grabbing gyro " << sensorid << ", no gyro data" << std::endl;
         continue;
       }
 
@@ -807,8 +846,8 @@ int main(int argc, char **argv) {
             - const_gyro_bias[sensorid].transpose(); // measurement w/ bias comp.
       }
       current_gyro.push_back(temp_gyro);
-      CLOG(WARNING, "test") << "grabbing gyro " << sensorid << ", " << current_gyro.back().rows() << " x " << current_gyro.back().cols() 
-        << ". Start time: " << current_gyro.back()(0, 0) << ", " << "end time: " << current_gyro.back()(inds.size()-1, 0) << std::endl;
+      // CLOG(WARNING, "test") << "grabbing gyro " << sensorid << ", " << current_gyro.back().rows() << " x " << current_gyro.back().cols() 
+      //  << ". Start time: " << current_gyro.back()(0, 0) << ", " << "end time: " << current_gyro.back()(inds.size()-1, 0) << std::endl;
     } // end for sensorid
       
     if (current_gyro.size() != 4)
@@ -872,6 +911,10 @@ int main(int argc, char **argv) {
 
     ++it;
     ++frame;
+    if (it == files.end()) {
+      CLOG(WARNING, "test") << "Saving pose graph.";
+      graph->save();
+    }
   }
 
   rclcpp::shutdown();

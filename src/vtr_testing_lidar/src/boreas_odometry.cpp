@@ -125,9 +125,9 @@ int main(int argc, char **argv) {
   auto stem = parts.back();
   boost::replace_all(stem, "-", "_");
   CLOG(WARNING, "test") << "Publishing status to topic: "
-                        << (stem + "_lidar_odometry");
+                        << ("b" + stem + "_lidar_odometry");
   const auto status_publisher = node->create_publisher<std_msgs::msg::String>(
-      stem + "_lidar_odometry", 1);
+      "b" + stem + "_lidar_odometry", 1);
 
   // Pose graph
   auto graph = tactic::Graph::MakeShared((data_dir / "graph").string(), false);

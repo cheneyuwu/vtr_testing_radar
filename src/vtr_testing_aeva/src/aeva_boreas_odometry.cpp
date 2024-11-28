@@ -192,7 +192,7 @@ std::pair<int64_t, Eigen::MatrixXd> load_new_lidar(const std::string &path, doub
   std::ifstream ifs(path, std::ios::binary);
   std::vector<char> buffer(std::istreambuf_iterator<char>(ifs), {});
   unsigned float_offset = 4; // float32
-  unsigned fields = 10;  // x, y, z, radial velocity, intensity, signal quality, reflectivity, time, point aflags
+  unsigned fields = 10;  // x, y, z, radial velocity, intensity, signal quality, reflectivity, time, point flags (64)
   unsigned point_step = float_offset * fields;
   unsigned N = floor(buffer.size() / point_step);
 
@@ -240,7 +240,7 @@ std::pair<int64_t, Eigen::MatrixXd> load_new_lidar(const std::string &path, doub
     point_flags = int(getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset));
 
     // Extract flags
-    line_id = 63 - ((point_flags >> 8) & 0xFF);
+    line_id = 39 - ((point_flags >> 8) & 0xFF);
     beam_id = (point_flags >> 16) & 0xF;
     face_id = (point_flags >> 22) & 0xF;
 
@@ -270,18 +270,10 @@ std::pair<int64_t, Eigen::MatrixXd> load_new_lidar(const std::string &path, doub
 EdgeTransform load_T_lidar_robot(bool new_lidar) {
   Eigen::Matrix4d T_lidar_vehicle_mat;
   if (new_lidar) {
-    // TO DO: update this matrix
-    Eigen::Matrix4d T_vehicle_applanix;
-    Eigen::Matrix4d T_lidar_applanix;
-    T_vehicle_applanix << 2.919180857486909295e-02, 9.995587305402551248e-01, -5.494272513870139714e-03, 0.6363626317902739693,
-                         -9.995209776952839187e-01, 2.913330025140300691e-02, -1.044368140828638020e-02, 0.005365408633876261706,
-                         -1.027900659253397700e-02, 5.796510591202577722e-03,  9.999303688200968931e-01, 1.804858391467637491e+00,
-                          0,                        0,                         0,                        1;
-    T_lidar_applanix << 0.011627749999999999, 0.9999312599999999,   0, -0.39312,
-                       -0.9998772299999999,   0.011646750000000001, 0, -0.37502,
-                        0,                    0,                    1,  0.1032,
-                        0,                    0,                    0,  1;
-    T_lidar_vehicle_mat = T_lidar_applanix * T_vehicle_applanix.inverse();
+    T_lidar_vehicle_mat << 0.99982945,  0.01750912,  0.00567659, -1.03971349,
+                          -0.01754661,  0.99973757,  0.01034526, -0.38788971,
+                          -0.00549427, -0.01044368,  0.99993037, -1.69798033,
+                           0.0,         0.0,         0.0,         1.0;
 
     } else {
     T_lidar_vehicle_mat << 0.9999366830849237, 0.008341717781538466, 0.0075534496251198685, -1.0119098938516395,
@@ -524,7 +516,7 @@ int main(int argc, char **argv) {
   std::vector<Eigen::MatrixXd> gyro_data_;
   gyro_data_.clear();
   std::string gyro_path = odo_dir.string() + "/applanix/" + "aeva_imu.csv";
-  gyro_data_.push_back(readBoreasGyroToEigenXd(gyro_path, initial_timestamp_micro_));
+  gyro_data_.push_back(readGyroToEigenXd(gyro_path, initial_timestamp_micro_, "aeva_boreas"));
   CLOG(WARNING, "test") << "Loaded gyro data " << ". Matrix " 
       << gyro_data_.back().rows() << " x " << gyro_data_.back().cols() << std::endl;
 

@@ -69,7 +69,7 @@
       odometry: [
           # odometry and mapping thread modules
           "icp",
-          #"doppler", 
+          # "doppler", 
           "mapping",
           "vertex_test",
           "memory",
@@ -133,9 +133,9 @@
         #
         active_lidars: [true]   # only one sensor
         active_gyros: [true]  
-        root_path: "/home/asrl-katya/ASRL/doppler_odom/sensor_config/boreas"    # point this to where we find the model
-        model_name: "mar8_boreas_lrvar_bp4-rim_vp3-imv-g_r5-150-e5_a0p1_aplat"
-        # model_name: "mar4_aeries2_lrvar_bp4-rim_vp3-imv-g_r5-150-e5_s0123_a0p1_aplat_newcalib_redo"
+        root_path: "/home/asrl-katya/ASRL/doppler_odom/sensor_config/aeva"    # point this to where we find the model
+        #model_name: "mar8_boreas_lrvar_bp4-rim_vp3-imv-g_r5-150-e5_a0p1_aplat"
+        model_name: "mar4_aeries2_lrvar_bp4-rim_vp3-imv-g_r5-150-e5_s0123_a0p1_aplat_newcalib_redo"
         downsample_steps: 2 # after image projection 
         #
         bias_input_feat: ["range", "intensity", "medianrv"]    # "range", "azimuth", "ransac_fvel", "ransac_yvel" ,  "gtvz", "gtox", "gtoy",

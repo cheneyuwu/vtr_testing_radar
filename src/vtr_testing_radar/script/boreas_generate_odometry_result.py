@@ -52,16 +52,17 @@ class BagFileParser():
 def main(dataset_dir, result_dir, velocity):
   result_dir = osp.normpath(result_dir)
   odo_input = osp.basename(result_dir)
-  # odo_input = odo_input.split('.', 1)[0]
-
   print("Result Directory:", result_dir)
   print("Odometry Run:", odo_input)
   print("Dataset Directory:", dataset_dir)
 
   try:
+    # Removes parameter related components from the odometry input
+    # Ex: 
+    # boreas-2021-10-15-12-35_kstrongest_3_0f35 -> boreas-2021-10-15-12-35
+    # boreas-2021-10-15-12-35                   -> boreas-2021-10-15-12-35
     odo_input_parsed = odo_input.split('_', 1)[0]
     dataset_odo = BoreasDataset(osp.normpath(dataset_dir), [[odo_input_parsed]])
-    # dataset_odo = BoreasDataset(osp.normpath(dataset_dir), [[odo_input]])
   except:
     return
 

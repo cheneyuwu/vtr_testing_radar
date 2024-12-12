@@ -180,19 +180,6 @@ int main(int argc, char **argv) {
     CLOG(WARNING, "test") << "Loading radar frame " << frame
                           << " with timestamp " << timestamp;
 
-
-    // if(frame < 1350){
-    //   ++it;
-    //   ++frame;
-    //   continue;
-    // }
-
-    // if(frame > 3270){
-    //   ++it;
-    //   ++frame;
-    //   continue;
-    // }
-
     // publish clock for sim time
     auto time_msg = rosgraph_msgs::msg::Clock();
     time_msg.clock = rclcpp::Time(timestamp);

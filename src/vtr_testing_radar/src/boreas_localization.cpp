@@ -94,7 +94,7 @@ EdgeTransform load_T_enu_radar_init(const fs::path &path, const bool &reverse) {
     while (std::getline(ifs, last_pose)) {
       first_pose = last_pose;
     }
-
+    
   } else {
     std::getline(ifs, first_pose);
   }
@@ -193,7 +193,6 @@ int main(int argc, char **argv) {
   auto evaluator = std::make_shared<LocEvaluator>(*graph);
   auto privileged_path = graph->getSubgraph(0ul, evaluator);
   std::stringstream ss;
-  // ss << "Repeat vertices: ";
   // Load parameter about whether to run localization in reverse
   const auto reverse = node->declare_parameter<bool>("boreas.localization.reverse", false);
   for (auto it = privileged_path->begin(0ul); it != privileged_path->end();

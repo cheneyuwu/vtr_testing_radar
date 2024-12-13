@@ -85,7 +85,7 @@
         detector: kstrongest # choose detector \in (kstrongest, cen2018, cacfar, oscfar, modified_cacfar)
         minr: 2.0 # mininum detection distance
         maxr: 80.0 # maximum detection distance
-        save_overlay: false
+        save_pointcloud_overlay: false
         # TODO: make cart_resolution an integer mult of radar_resolution
         cart_resolution: 0.2384 # m/pixel of BEV Cartesian radar image
         beta: 0.049 # Doppler correction factor (set to 0 to turn this off)
@@ -111,12 +111,10 @@
           width: 101
           guard: 5
           threshold: 25.0
-          static_threshold: 10.47
         caso_cfar:
           width: 101
           guard: 5
           threshold: 3700.0
-          static_threshold: 10.47
         is_cfar:
           width: 101
           guard: 5

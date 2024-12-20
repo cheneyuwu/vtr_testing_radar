@@ -14,7 +14,7 @@
         # "tactic.module.graph_mem_manager",
         # pipeline specific
         "radar.pipeline",
-        # "radar.navtech_extractor",
+        # "radar.pc_extractor",
         # "radar.preprocessing",
         # "radar.mcransac",
         "radar.odometry_icp",
@@ -51,6 +51,7 @@
       preprocessing: [
           # preprocessing thread modules
           "conversion",
+          "extraction",
           "filtering",
         ]
 
@@ -73,10 +74,21 @@
       # submap creation thresholds
       submap_translation_threshold: 10.0 # in meters
       submap_rotation_threshold: 30.0 # in degrees
+      save_raw_point_cloud: false
+      save_radar_images: false
 
     preprocessing:
       conversion:
-        type: radar.navtech_extractor
+        type: radar.offline_converter
+        cart_resolution: 0.2384 # m/pixel of BEV Cartesian radar image
+        radar_resolution: 0.0596
+        range_offset: -0.31
+        minr: 2.0 # mininum detection distance
+        maxr: 80.0 # maximum detection distance
+        beta: 0.049 # Doppler correction factor (set to 0 to turn this off)
+        # chirp_type:
+      extraction:
+        type: radar.pc_extractor
         radar_resolution: 0.04381
         range_offset: -0.31
         detector: cacfar # choose detector \in (kstrongest, cen2018, cacfar, oscfar...)
@@ -121,6 +133,17 @@
         visualize: true
 
     odometry:
+      gyro:
+        type: radar.odometry_gyro
+        traj_qc_diag: [1.0, 0.0001, 0.0001, 0.0001, 0.0001, 0.01]
+        gyro_cov: 1e-7
+
+        # steam parameters #TOTUNE
+        verbose: false
+        max_iterations: 3
+        
+      preintegration:
+        type: radar.odometry_preintegration
       mcransac:
         type: radar.mcransac
         tolerance: 0.1225 # matched with squared error less than this are inliers
@@ -167,7 +190,10 @@
         max_iterations: 1
 
         # threshold
-        min_matched_ratio: 0.0
+        min_matched_ratio: 0.0 # 0.0 to disable
+        max_trans_vel_diff: 1000.0 # 1000.0 (or some large number) to disable
+        max_rot_vel_diff: 1000.0 # 1000.0 (or some large number) to disable
+        max_transformation_diff: 1000.0 # 1000.0 (or some large number) to disable
 
         visualize: true
 

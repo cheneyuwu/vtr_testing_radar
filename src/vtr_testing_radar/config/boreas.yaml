@@ -14,7 +14,7 @@
         # "tactic.module.graph_mem_manager",
         # pipeline specific
         "radar.pipeline",
-        # "radar.navtech_extractor",
+        # "radar.pc_extractor",
         # "radar.preprocessing",
         # "radar.mcransac",
         "radar.odometry_icp",
@@ -43,7 +43,7 @@
       save_odometry_result: true
       save_odometry_vel_result : true
       save_localization_result: true
-      visualize: false
+      visualize: true
 
       rviz_loc_path_offset: [0., 0., 0.]
 
@@ -54,6 +54,7 @@
       preprocessing: [
           # preprocessing thread modules
           "conversion",
+          "extraction",
           "filtering",
         ]
 
@@ -76,11 +77,22 @@
       # submap creation thresholds
       submap_translation_threshold: 10.0 # in meters
       submap_rotation_threshold: 30.0 # in degrees
+      save_raw_point_cloud: false
+      save_radar_images: false
 
     preprocessing:
       conversion:
-        type: radar.navtech_extractor
-        radar_resolution: 0.0596
+        type: radar.offline_converter
+        cart_resolution: 0.2384 # m/pixel of BEV Cartesian radar image
+        radar_resolution: 0.04381 #0.0596
+        range_offset: -0.31
+        minr: 2.0 # mininum detection distance
+        maxr: 80.0 # maximum detection distance
+        beta: 0.049 # Doppler correction factor (set to 0 to turn this off)
+        # chirp_type:
+      extraction:
+        type: radar.pc_extractor
+        radar_resolution: 0.04381 #0.0596
         range_offset: -0.31
         detector: kstrongest # choose detector \in (kstrongest, cen2018, cacfar, oscfar, modified_cacfar)
         minr: 2.0 # mininum detection distance
@@ -152,12 +164,12 @@
           zq: 2.75
           sigma: 10
 
-        visualize: false
+        visualize: true
 
       filtering:
         type: radar.preprocessing
 
-        num_threads: 1 # number of threads for nearest neighbor search
+        num_threads: 12 # number of threads for nearest neighbor search
 
         voxel_downsample: false
         frame_voxel_size: 1.0 # grid size for frame voxelization in meters
@@ -169,9 +181,21 @@
         num_sample_linearity: 5000 # max number of sample after filtering based on linearity
         min_linearity_score: -1.0 # min linearity score (negative value means no filtering)
 
-        visualize: false
+        visualize: true
 
     odometry:
+      gyro:
+        type: radar.odometry_gyro
+        traj_qc_diag: [1.0, 0.0001, 0.0001, 0.0001, 0.0001, 0.01]
+        gyro_cov: 1e-7
+
+        # steam parameters #TOTUNE
+        verbose: false
+        max_iterations: 3
+        
+      preintegration:
+        type: radar.odometry_preintegration
+
       mcransac:
         type: radar.mcransac
         tolerance: 0.1225 # matched with squared error less than this are inliers
@@ -186,7 +210,7 @@
         # BASD
         nbins: 16
         bin_size: 1
-        visualize: false
+        visualize: true
         filter_pc: false
         init_icp: false
 
@@ -201,12 +225,12 @@
         traj_qc_diag: [1.0, 0.0001, 0.0001, 0.0001, 0.0001, 0.01]
 
         # ICP parameters
-        num_threads: 1
+        num_threads: 12
         first_num_steps: 2 # number of steps to with a greater matching distance threshold
         initial_max_iter: 4 # phase 1 max iterations
         initial_max_pairing_dist: 5.0 # phase 1 max pairing distance in meters
         initial_max_planar_dist: 5.0 # phase 1 max planar distance in meters
-        refined_max_iter: 50 # phase 2 max iterations
+        refined_max_iter: 1000 # phase 2 max iterations
         refined_max_pairing_dist: 5.0 # phase 2 max pairing distance in meters
         refined_max_planar_dist: 5.0 # phase 2 max planar distance in meters
         averaging_num_steps: 5 # averaging pose change over this number of steps until change is below a threshold at convergence
@@ -219,8 +243,11 @@
 
         # threshold
         min_matched_ratio: 0.75
+        max_trans_vel_diff: 2.60 # 1000.0 (or some large number) to disable
+        max_rot_vel_diff: 1.35 # 1000.0 (or some large number) to disable
+        max_transformation_diff: 1000.0 # 1000.0 (or some large number) to disable
 
-        visualize: false
+        visualize: true
 
       mapping:
         type: radar.odometry_map_maintenance
@@ -232,7 +259,7 @@
 
         point_life_time: 3.0 # point life time based on number of map updates
 
-        visualize: false
+        visualize: true
 
       vertex_test:
         type: radar.vertex_test
@@ -251,7 +278,7 @@
 
         map_version: "pointmap"
 
-        visualize: false
+        visualize: true
 
       icp:
         type: radar.localization_icp
@@ -259,12 +286,12 @@
         use_pose_prior: true
 
         # ICP parameters
-        num_threads: 1
+        num_threads: 12
         first_num_steps: 2
         initial_max_iter: 4
         initial_max_pairing_dist: 5.0
         initial_max_planar_dist: 5.0
-        refined_max_iter: 50
+        refined_max_iter: 1000
         refined_max_pairing_dist: 5.0
         refined_max_planar_dist: 5.0
         averaging_num_steps: 5

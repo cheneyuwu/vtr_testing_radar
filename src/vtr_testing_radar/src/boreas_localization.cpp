@@ -193,6 +193,7 @@ int main(int argc, char **argv) {
   auto evaluator = std::make_shared<LocEvaluator>(*graph);
   auto privileged_path = graph->getSubgraph(0ul, evaluator);
   std::stringstream ss;
+  
   // Load parameter about whether to run localization in reverse
   const auto reverse = node->declare_parameter<bool>("boreas.localization.reverse", false);
   for (auto it = privileged_path->begin(0ul); it != privileged_path->end();

@@ -51,7 +51,7 @@ class BagFileParser():
     return [(timestamp, deserialize_message(data, self.topic_msg_message[topic_name])) for timestamp, data in rows]
 
 
-def main(dataset_dir, result_dir):
+def main(dataset_dir, result_dir, sensor_type):
   result_dir = osp.normpath(result_dir)
   odo_input = osp.basename(result_dir)
   loc_inputs = [i for i in os.listdir(result_dir) if (i != odo_input and i.startswith("2024-"))]
@@ -60,7 +60,20 @@ def main(dataset_dir, result_dir):
   print("Odometry Run:", odo_input)
   print("Localization Runs:", loc_inputs)
   print("Dataset Directory:", dataset_dir)
-
+  
+  if sensor_type == "aevaii_boreas":
+    T_sr = np.array([[ 0.99982945,  0.01750912,  0.00567659, -1.03971349],
+                     [-0.01754661,  0.99973757,  0.01034526, -0.38788971],
+                     [-0.00549427, -0.01044368,  0.99993037, -1.69798033],
+                     [ 0, 0, 0, 1]]).astype(np.float64)
+  elif sensor_type == "aeva_boreas":
+    T_sr = np.array([[ 0.9999366830849237,    0.008341717781538466,   0.0075534496251198685, -1.0119098938516395],
+                     [-0.008341717774127972,  0.9999652112886684,    -3.150635091210066e-05, -0.3965882433517194],
+                     [-0.007553449599178521, -3.1504388681967066e-05, 0.9999714717963843,    -1.6970000000000010],
+                     [0, 0, 0, 1]]).astype(np.float64)
+  else:
+    raise ValueError("Unknown sensor type: ", sensor_type)
+  
   # dataset directory and necessary sequences to load
   dataset_odo = BoreasDataset(osp.normpath(dataset_dir), [[odo_input]])
 
@@ -69,10 +82,7 @@ def main(dataset_dir, result_dir):
   for sequence in dataset_odo.sequences:
     # Ground truth is provided w.r.t sensor, so we set sensor to vehicle transform 
     # New way using rear axle
-    T_lidar_robot_odo = np.array([[0.9999366830849237,     0.008341717781538466,   0.0075534496251198685, -1.0119098938516395],
-                                  [-0.008341717774127972,  0.9999652112886684,    -3.150635091210066e-05, -0.3965882433517194],
-                                  [-0.007553449599178521, -3.1504388681967066e-05, 0.9999714717963843,    -1.6970000000000010],
-                                  [0,                      0,                      0,                      1                 ]]).astype(np.float64)
+    T_lidar_robot_odo = T_sr
     T_robot_lidar_odo = get_inverse_tf(T_lidar_robot_odo)
 
     # build dictionary
@@ -91,10 +101,7 @@ def main(dataset_dir, result_dir):
     for sequence in dataset_loc.sequences:
       # Ground truth is provided w.r.t sensor, so we set sensor to vehicle transform
       # New way using rear axle
-      T_lidar_robot_loc = np.array([[0.9999366830849237,     0.008341717781538466,   0.0075534496251198685, -1.0119098938516395],
-                                    [-0.008341717774127972,  0.9999652112886684,    -3.150635091210066e-05, -0.3965882433517194],
-                                    [-0.007553449599178521, -3.1504388681967066e-05, 0.9999714717963843,    -1.6970000000000010],
-                                    [0,                      0,                      0,                      1                 ]]).astype(np.float64)
+      T_lidar_robot_loc = T_sr
       T_robot_lidar_loc = get_inverse_tf(T_lidar_robot_loc)
 
       # build dictionary
@@ -167,7 +174,8 @@ if __name__ == "__main__":
   # <rosbag name>/<rosbag name>_0.db3
   parser.add_argument('--dataset', default=os.getcwd(), type=str, help='path to boreas dataset (contains boreas-*)')
   parser.add_argument('--path', default=os.getcwd(), type=str, help='path to vtr folder (default: os.getcwd())')
+  parser.add_argument('--type', default=os.getcwd(), type=str, help='dataset type (which sensor?)')
 
   args = parser.parse_args()
 
-  main(args.dataset, args.path)
+  main(args.dataset, args.path, args.type)

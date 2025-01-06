@@ -14,8 +14,8 @@ source ${VTRRROOT}/install/setup.bash
 source ${VTRROOT}/venv/bin/activate
 
 #   - dump localization result to boreas expected format (txt file)
-if [ "$TYPE" = "aeva_boreas" ]; then
-    python ${VTRRROOT}/src/vtr_testing_aeva/script/boreas_generate_localization_result.py --dataset ${VTRRDATA} --path ${VTRRRESULT}/${ODO_INPUT}
+if [ "$TYPE" = "aeva_boreas" ] || [ "$TYPE" = "aevaii_boreas" ]; then
+    python ${VTRRROOT}/src/vtr_testing_aeva/script/boreas_generate_localization_result.py --dataset ${VTRRDATA} --path ${VTRRRESULT}/${ODO_INPUT} --type ${TYPE}
 elif [ "$TYPE" = "aeva_hq" ]; then
     python ${VTRRROOT}/src/vtr_testing_aeva/script/aevahq_generate_localization_result.py --dataset ${VTRRDATA} --path ${VTRRRESULT}/${ODO_INPUT}
 fi

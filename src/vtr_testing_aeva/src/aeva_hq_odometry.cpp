@@ -213,52 +213,6 @@ std::string getFirstFilename(const std::string& dir_path) {
     return first_filename;
 }
 
-Eigen::MatrixXd readBoreasGyroToEigenXd(const std::string &file_path, const int64_t& initial_timestamp_micro) {
-  std::ifstream imu_file(file_path);
-  std::vector<std::vector<double>> mat_vec;
-  if (imu_file.is_open()) {
-    std::string line;
-    std::getline(imu_file, line);  // header
-    std::vector<double> row_vec(4);
-    for (; std::getline(imu_file, line);) {
-      if (line.empty()) continue;
-      std::stringstream ss(line);
-
-      int64_t timestamp = 0;
-      double timestamp_sec = 0;
-      double r = 0, p = 0, y = 0;
-      for (int i = 0; i < 4; ++i) {
-        std::string value;
-        std::getline(ss, value, ',');
-
-        if (i == 0) {
-          timestamp = std::stol(value);
-          timestamp_sec = static_cast<double>(timestamp - initial_timestamp_micro)*1e-6;
-        }
-        else if (i == 1)
-          r = std::stod(value);
-        else if (i == 2)
-          p = std::stod(value);
-        else if (i == 3)
-          y = std::stod(value);
-      } // end for row
-      // std::cout << timestamp_sec << ", " << r << ", " << p << ", " << y << std::endl;
-      row_vec[0] = timestamp_sec;
-      row_vec[1] = p;
-      row_vec[2] = r;
-      row_vec[3] = y;
-      mat_vec.push_back(row_vec);
-    } // end for line
-  } // end if
-  else {
-    throw std::runtime_error{"unable to open file: " + file_path};
-  }
-  // output eigen matrix
-  Eigen::MatrixXd output = Eigen::MatrixXd(mat_vec.size(), mat_vec[0].size());
-  for (int i = 0; i < (int)mat_vec.size(); ++i) output.row(i) = Eigen::VectorXd::Map(&mat_vec[i][0], mat_vec[i].size());
-  return output;
-}
-
 Eigen::MatrixXd readGyroToEigenXd(const std::string &file_path, const int64_t& initial_timestamp_micro, const std::string& dataset) {
   // this function is specifically designed for 2 datasets: aeva_boreas and aeva_hq
   if (dataset != "aeva_boreas" && dataset != "aeva_hq") 
@@ -624,6 +578,9 @@ int main(int argc, char **argv) {
       std::vector<int> inds; inds.clear();
       for (int r = 0; r < gyro_data_[sensorid].rows(); ++r) {
         double meas_time = gyro_data_[sensorid](r, 0);
+        std::cout << "meas_time: " << meas_time << std::endl;
+        std::cout << "start_time: " << start_time << std::endl;
+        std::cout << "end_time: " << end_time << std::endl;
         if (meas_time > start_time && meas_time <= end_time)
           inds.push_back(r);
       } // end for r

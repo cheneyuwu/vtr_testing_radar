@@ -74,7 +74,7 @@ std::vector<Eigen::MatrixXd> loadElevationOrder(const std::string &bo_path) {
   std::vector<Eigen::MatrixXd> elevation_order_by_beam_id_;
 
   // read elevation settings
-  std::string path = bo_path + "/mean_elevation_beam_order_0";
+  std::string path = bo_path; // + "/mean_elevation_beam_order_0";
   std::ifstream csv(path);
   if (!csv) throw std::ios::failure("Error opening csv file");
   Eigen::MatrixXd elevation_order = readCSVtoEigenXd(csv);
@@ -98,7 +98,7 @@ std::vector<Eigen::MatrixXd> loadElevationOrder(const std::string &bo_path) {
   return elevation_order_by_beam_id_;
 }
 
-std::pair<int64_t, Eigen::MatrixXd> load_lidar(const std::string &path, const std::string &bo_path, double time_delta_sec, double start_time, double end_time, int64_t filename) {
+std::pair<int64_t, Eigen::MatrixXd> load_lidar(const std::string &path, const std::string &bo_path, double start_time, double end_time, int64_t filename) {
   // load Aeries I pointcloud
   std::ifstream ifs(path, std::ios::binary);
   std::vector<char> buffer(std::istreambuf_iterator<char>(ifs), {});
@@ -142,7 +142,7 @@ std::pair<int64_t, Eigen::MatrixXd> load_lidar(const std::string &path, const st
     time_temp = getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset); // sec
     double t = double(filename / 1000) * 1.0e-6;
     time_keep = (int64_t)((time_temp + t) * 1e9);
-    time_temp = time_temp + time_delta_sec;
+    time_temp = time_temp + start_time;
     ++offset;
     // Beam id
     beam_id = (int)(getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset));
@@ -187,7 +187,108 @@ std::pair<int64_t, Eigen::MatrixXd> load_lidar(const std::string &path, const st
   return std::make_pair(fields, pc);
 }
 
-std::pair<int64_t, Eigen::MatrixXd> load_new_lidar(const std::string &path, double time_delta_sec, double start_time, double end_time, int64_t filename) {
+std::pair<int64_t, Eigen::MatrixXd> load_new_lidar(const std::string &path, const std::string &bo_path, double start_time, double end_time, int64_t filename) {
+  // load Aeries II pointcloud
+  std::ifstream ifs(path, std::ios::binary);
+  std::vector<char> buffer(std::istreambuf_iterator<char>(ifs), {});
+  unsigned float_offset = 4; // float32
+  unsigned fields = 10;  // x, y, z, radial velocity, intensity, signal quality, reflectivity, time, point flags (64)
+  unsigned point_step = float_offset * fields;
+  unsigned N = floor(buffer.size() / point_step);
+
+  std::vector<Eigen::VectorXd> points; // Vector to store valid points dynamically
+
+  auto getFloatFromByteArray = [](char *byteArray, unsigned index) -> float {
+    return *((float *)(byteArray + index));
+  };
+
+  auto elevation_order = loadElevationOrder(bo_path);
+
+  for (unsigned i(0); i < N; i++) {
+    int bufpos = i * point_step;
+    int offset = 0;
+
+    // Temporary variables
+    double x, y, z, radial_velocity, intensity, time_temp;
+    int64_t time_keep;
+    uint64_t point_flags;
+    int beam_id, line_id, face_id, sensor_id, temp;
+
+    // x, y, z
+    x = getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset);
+    ++offset;
+    y = getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset);
+    ++offset;
+    z = getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset);
+
+    ++offset;
+    // Radial velocity
+    radial_velocity = getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset);
+    ++offset;
+    // Intensity
+    intensity = getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset);
+    ++offset;
+    // Skip signal quality
+    ++offset;
+    // Skip reflectivity
+    ++offset;
+    // Timestamp
+    time_temp = (int64_t)(getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset)); // nanosec
+    double t = double(filename); // nanosec
+    time_keep = (int64_t)(time_temp + t);
+    time_temp = time_temp * 1e-9 + start_time; //sec
+    ++offset;
+    // Point Flags (64 bits)
+    point_flags = int(getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset));
+
+    // Extract flags
+    temp = 63 - ((point_flags >> 8) & 0xFF);
+    beam_id = (point_flags >> 16) & 0xF;
+    face_id = (point_flags >> 22) & 0xF;
+
+    // compute elevation
+    const double xy = sqrt(x*x + y*y);
+    const double elevation = atan2(z, xy);
+
+    // determine row by matching by beam_id (0, 1, 2, or 3) and closest elevation to precalculated values
+    // note: elevation_order_by_beam_id_[point.beam_id] first column is mean elevation, second column is row id
+    const auto ele_diff = elevation_order[beam_id].col(0).array() - elevation;
+    double min_val = ele_diff(0)*ele_diff(0);
+    size_t min_id = 0;
+    for (size_t i = 1; i < ele_diff.rows(); ++i) {
+      const auto val = ele_diff(i) * ele_diff(i);
+      if (val < min_val) {
+        min_val = val;
+        min_id = i;
+      }
+    }
+
+    line_id = elevation_order[beam_id](min_id, 1);
+
+    // Error checks
+    // if (line_id < 0 || line_id >= 64) continue;
+    if (face_id < 0 || face_id > 5) continue;
+
+    // Sensor id - only one sensor
+    sensor_id = 0;
+
+    // Include if within start and end time
+    if (time_temp > start_time && time_temp <= end_time) {
+        Eigen::VectorXd point(10);
+        point << x, y, z, radial_velocity, intensity, time_keep, beam_id, line_id, face_id, sensor_id;
+        points.push_back(point);
+    }
+  }
+
+  // Convert vector to Eigen::MatrixXd
+  Eigen::MatrixXd pc(points.size(), 10);
+  for (size_t k = 0; k < points.size(); ++k) {
+    pc.row(k) = points[k];
+  }
+  return std::make_pair(fields, pc);
+}
+
+std::pair<int64_t, Eigen::MatrixXd> load_new_lidar2(const std::string &path, double start_time, double end_time, int64_t filename) {
   // load Aeries II pointcloud
   std::ifstream ifs(path, std::ios::binary);
   std::vector<char> buffer(std::istreambuf_iterator<char>(ifs), {});
@@ -234,13 +335,13 @@ std::pair<int64_t, Eigen::MatrixXd> load_new_lidar(const std::string &path, doub
     time_temp = (int64_t)(getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset)); // nanosec
     double t = double(filename); // nanosec
     time_keep = (int64_t)(time_temp + t);
-    time_temp = time_temp * 1e-9 + time_delta_sec; //sec
+    time_temp = time_temp * 1e-9 + start_time; //sec
     ++offset;
     // Point Flags (64 bits)
     point_flags = int(getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset));
 
     // Extract flags
-    line_id = 39 - ((point_flags >> 8) & 0xFF);
+    line_id = 63 - ((point_flags >> 8) & 0xFF);
     beam_id = (point_flags >> 16) & 0xF;
     face_id = (point_flags >> 22) & 0xF;
 
@@ -270,12 +371,13 @@ std::pair<int64_t, Eigen::MatrixXd> load_new_lidar(const std::string &path, doub
 EdgeTransform load_T_lidar_robot(bool new_lidar) {
   Eigen::Matrix4d T_lidar_vehicle_mat;
   if (new_lidar) {
+    // Aeries II boreas
     T_lidar_vehicle_mat << 0.99982945,  0.01750912,  0.00567659, -1.03971349,
                           -0.01754661,  0.99973757,  0.01034526, -0.38788971,
                           -0.00549427, -0.01044368,  0.99993037, -1.69798033,
                            0.0,         0.0,         0.0,         1.0;
-
-    } else {
+  } else {
+    // Aeries I boreas
     T_lidar_vehicle_mat << 0.9999366830849237, 0.008341717781538466, 0.0075534496251198685, -1.0119098938516395,
                           -0.008341717774127972, 0.9999652112886684, -3.150635091210066e-05, -0.39658824335171944,
                           -0.007553449599178521, -3.1504388681967066e-05, 0.9999714717963843, -1.697000000000001,
@@ -302,54 +404,9 @@ std::string getFirstFilename(const std::string& dir_path) {
     return first_filename;
 }
 
-Eigen::MatrixXd readBoreasGyroToEigenXd(const std::string &file_path, const int64_t& initial_timestamp_micro) {
-  std::ifstream imu_file(file_path);
-  std::vector<std::vector<double>> mat_vec;
-  if (imu_file.is_open()) {
-    std::string line;
-    std::getline(imu_file, line);  // header
-    std::vector<double> row_vec(4);
-    for (; std::getline(imu_file, line);) {
-      if (line.empty()) continue;
-      std::stringstream ss(line);
-
-      int64_t timestamp = 0;
-      double timestamp_sec = 0;
-      double r = 0, p = 0, y = 0;
-      for (int i = 0; i < 4; ++i) {
-        std::string value;
-        std::getline(ss, value, ',');
-
-        if (i == 0) {
-          timestamp = std::stol(value);
-          timestamp_sec = static_cast<double>(timestamp - initial_timestamp_micro)*1e-6;
-        }
-        else if (i == 1)
-          r = std::stod(value);
-        else if (i == 2)
-          p = std::stod(value);
-        else if (i == 3)
-          y = std::stod(value);
-      } // end for row
-      row_vec[0] = timestamp_sec;
-      row_vec[1] = p;
-      row_vec[2] = r;
-      row_vec[3] = y;
-      mat_vec.push_back(row_vec);
-    } // end for line
-  } // end if
-  else {
-    throw std::runtime_error{"unable to open file: " + file_path};
-  }
-  // output eigen matrix
-  Eigen::MatrixXd output = Eigen::MatrixXd(mat_vec.size(), mat_vec[0].size());
-  for (int i = 0; i < (int)mat_vec.size(); ++i) output.row(i) = Eigen::VectorXd::Map(&mat_vec[i][0], mat_vec[i].size());
-  return output;
-}
-
 Eigen::MatrixXd readGyroToEigenXd(const std::string &file_path, const int64_t& initial_timestamp_micro, const std::string& dataset) {
   // this function is specifically designed for 2 datasets: aeva_boreas and aeva_hq
-  if (dataset != "aeva_boreas" && dataset != "aeva_hq") 
+  if (dataset != "aevaI_boreas" && dataset != "aevaII_boreas") 
     throw std::runtime_error{"[readGyroToEigenXd] unknown dataset specified!"};
 
   std::ifstream imu_file(file_path);
@@ -372,21 +429,19 @@ Eigen::MatrixXd readGyroToEigenXd(const std::string &file_path, const int64_t& i
         if (i == 0) {
           timestamp = std::stol(value);
           timestamp_sec = static_cast<double>(timestamp - initial_timestamp_micro)*1e-6;
-        }
-        else if (dataset == "aeva_boreas") {  // Note: r and p are flipped for aeva_boreas
+        } else if (dataset == "aevaI_boreas") {  // Note: r and p are flipped for aeva_boreas
           if (i == 2) 
             r = std::stod(value);
           else if (i == 1)
             p = std::stod(value);
           else if (i == 3)
             y = std::stod(value);
-        }
-        else /* if (dataset == "aeva_hq") */ {
-          if (i == 4)
+        } else if (dataset == "aevaII_boreas") {
+          if (i == 1)
             r = std::stod(value);
-          else if (i == 5)
+          else if (i == 2)
             p = std::stod(value);
-          else if (i == 6)
+          else if (i == 3)
             y = std::stod(value);
         }
       } // end for row
@@ -516,16 +571,39 @@ int main(int argc, char **argv) {
   std::vector<Eigen::MatrixXd> gyro_data_;
   gyro_data_.clear();
   std::string gyro_path = odo_dir.string() + "/applanix/" + "aeva_imu.csv";
-  gyro_data_.push_back(readGyroToEigenXd(gyro_path, initial_timestamp_micro_, "aeva_boreas"));
+  if (aeriesII) {
+    // load Aeries II boreas gyro
+    gyro_data_.push_back(readGyroToEigenXd(gyro_path, initial_timestamp_micro_, "aevaII_boreas"));
+    gyro_data_.back().rightCols<3>() *= -1.0; // flip reference frame
+
+    // const_gyro_bias.push_back(gyro_data_.back().topRightCorner(40, 3).colwise().mean().transpose());
+    // std::cout << "Gyro bias: " << const_gyro_bias.back() << std::endl;
+
+  } else {
+    // load Aeries I boreas gyro
+    gyro_data_.push_back(readGyroToEigenXd(gyro_path, initial_timestamp_micro_, "aevaI_boreas"));
+  }
+
   CLOG(WARNING, "test") << "Loaded gyro data " << ". Matrix " 
       << gyro_data_.back().rows() << " x " << gyro_data_.back().cols() << std::endl;
 
   std::vector<Eigen::Matrix3d> gyro_invcov;
   gyro_invcov.resize(1);
   gyro_invcov[0] = Eigen::Matrix3d::Identity();
+  
+  // Aeries I
   gyro_invcov[0](0,0) = 1.0/(1.45e-4);
   gyro_invcov[0](1,1) = 1.0/(2.35e-4); 
   gyro_invcov[0](2,2) = 1.0/(1.7e-5);
+
+  // // Aeries II
+  // gyro_invcov[0](0,0) = 1.0/(0.00065282);
+  // gyro_invcov[0](1,1) = 1.0/(0.00071802); 
+  // gyro_invcov[0](2,2) = 1.0/(0.00011987);
+
+  // gyro_invcov[0](0,0) = 1.0/(1.32996430e-04);
+  // gyro_invcov[0](1,1) = 1.0/(1.46090049e-04); 
+  // gyro_invcov[0](2,2) = 1.0/(4.57596184e-05);
 
   auto tf_sbc = std::make_shared<tf2_ros::StaticTransformBroadcaster>(node);
   auto msg =
@@ -561,11 +639,10 @@ int main(int argc, char **argv) {
     std::cout << "Frame " << frame << std::endl;
     const auto filename = getStampFromPath((it)->path().string());
     int64_t time_delta_micro = filename / 1000 - initial_timestamp_micro_;
-    double time_delta_sec = static_cast<double>(time_delta_micro) / 1e6;
+    double start_time = static_cast<double>(time_delta_micro) / 1e6;
 
     // Note: we peak into future data for the end timestamp for evaluation convenience. An online implementation
     // would need different logic, i.e., use the last timestamp of the pointcloud
-    auto start_time = time_delta_sec;
     double end_time = start_time + 0.1;
     // Get the name of the next file
     int64_t next_file_name;
@@ -575,41 +652,48 @@ int main(int argc, char **argv) {
     }
     int64_t start_name = filename;
     
+    double dt;
     Eigen::MatrixXd points;
     if (aeriesII) {
-      // load Aeries II boreas pointcloud
-      std::tie(std::ignore, points) = load_new_lidar(it->path().string(), time_delta_sec, start_time, end_time, start_name);
+      // // Beam Order Path
+      // std::string bo_path = config["/**"]["ros__parameters"]["bo_path"].as<std::string>() + "/aeriesii/mean_elevation.txt";
+      // // load Aeries II boreas pointcloud
+      // std::tie(std::ignore, points) = load_new_lidar(it->path().string(), bo_path, start_time, start_time, end_time, start_name);
+      dt = 0.0;
+      std::tie(std::ignore, points) = load_new_lidar2(it->path().string(), start_time, end_time, start_name);
     } else {
+      dt = 0.1;
       // Beam Order Path
-      std::string bo_path = config["/**"]["ros__parameters"]["bo_path"].as<std::string>();
+      std::string bo_path = config["/**"]["ros__parameters"]["bo_path"].as<std::string>() + "/mean_elevation_beam_order_0";
       // load Aeries I boreas pointcloud
-      std::tie(std::ignore, points) = load_lidar(it->path().string(), bo_path, time_delta_sec, start_time, end_time, start_name);
+      std::tie(std::ignore, points) = load_lidar(it->path().string(), bo_path, start_time, end_time, start_name);
     }
 
     // load gyro data
-    double dt = 0.1;
     std::vector<Eigen::MatrixXd> current_gyro;
     for (int sensorid = 0; sensorid < gyro_data_.size(); ++sensorid) {
       std::vector<int> inds; inds.clear();
-        for (int r = 0; r < gyro_data_[sensorid].rows(); ++r) {
+      for (int r = 0; r < gyro_data_[sensorid].rows(); ++r) {
         double meas_time = gyro_data_[sensorid](r, 0) - dt;
-        if (meas_time >= start_time && meas_time < end_time)
-            inds.push_back(r);
-        } // end for r
+        if (meas_time >= start_time && meas_time < end_time) 
+          inds.push_back(r);
+      } // end for r
 
-        if (inds.size() == 0) {
+      if (inds.size() == 0) {
         // no measurements
         current_gyro.push_back(Eigen::Matrix<double, 1, 1>());  // 1x1 zero matrix
         continue;
-        }
+      }
 
         Eigen::MatrixXd temp_gyro(inds.size(), 4);
         for (int r = 0; r < inds.size(); ++r) {
-        temp_gyro(r, 0) = gyro_data_[sensorid](inds[r], 0) - dt; // timestamp
-        temp_gyro.row(r).rightCols<3>() = gyro_data_[sensorid].row(inds[r]).rightCols<3>();
-        temp_gyro.row(r).rightCols<3>() -= const_gyro_bias[0].transpose();  // apply gyro bias
-        }
-        current_gyro.push_back(temp_gyro);
+          temp_gyro(r, 0) = gyro_data_[sensorid](inds[r], 0) - dt; // timestamp
+          temp_gyro.row(r).rightCols<3>() = gyro_data_[sensorid].row(inds[r]).rightCols<3>();
+          temp_gyro.row(r).rightCols<3>() -= const_gyro_bias[0].transpose();  // apply gyro bias
+      }
+      current_gyro.push_back(temp_gyro);
+      // CLOG(WARNING, "test") << "grabbing gyro " << sensorid << ", " << current_gyro.back().rows() << " x " << current_gyro.back().cols() 
+      //   << ". Start time: " << current_gyro.back()(0, 0) << ", " << "end time: " << current_gyro.back()(inds.size()-1, 0) << std::endl;
     } // end for sensorid
 
     // publish clock for sim time

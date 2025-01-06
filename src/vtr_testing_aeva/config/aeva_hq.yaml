@@ -137,7 +137,6 @@
         var_polyorder: 2
         median_sensorid: 3
         mm_azi: [-55.0, 55.0] # deg
-        azi_res: 0.2          # deg
         nframes_gbias_calib: 120
 
         visualize: true

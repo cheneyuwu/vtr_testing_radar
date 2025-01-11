@@ -134,21 +134,6 @@ def main(dataset_dir, result_dir, velocity):
     writer = csv.writer(file, delimiter=' ')
     writer.writerows(result)
     print("Written to file:", osp.join(output_dir, odo_input + ".txt"))
-  
-  if velocity:
-    output_dir = osp.join(result_dir, "odometry_vel_result")
-    os.makedirs(output_dir, exist_ok=True)
-    with open(osp.join(output_dir, odo_input + ".txt"), "+w") as file:
-      writer = csv.writer(file, delimiter=' ')
-      writer.writerows(vel_results)
-      print("Written to file:", osp.join(output_dir, odo_input + ".txt"))
-
-    output_dir = osp.join(result_dir, "../odometry_vel_result")
-    os.makedirs(output_dir, exist_ok=True)
-    with open(osp.join(output_dir, odo_input + ".txt"), "+w") as file:
-      writer = csv.writer(file, delimiter=' ')
-      writer.writerows(vel_results)
-      print("Written to file:", osp.join(output_dir, odo_input + ".txt"))
 
   if velocity:
     output_dir = osp.join(result_dir, "odometry_vel_result")

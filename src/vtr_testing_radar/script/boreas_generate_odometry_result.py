@@ -84,12 +84,6 @@ def main(dataset_dir, result_dir, velocity):
                             [0, 1, 0., 0.770],
                             [ 0, 0, 1, -1.8],
                             [ 0, 0, 0, 1]])
-  
-  # T_axel_applanixxfwd = np.array([[0.99982307, 0.01881049, 0, 0.65],
-  #                           [0.01881049, 0.99982307, 0., 0.770],
-  #                           [ 0, 0, 1, -1.8],
-  #                           [ 0, 0, 0, 1]])
-
 
   T_applanix_lidar = dataset_odo.sequences[0].calib.T_applanix_lidar
   T_radar_lidar = dataset_odo.sequences[0].calib.T_radar_lidar

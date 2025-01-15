@@ -69,27 +69,15 @@ def main(dataset_dir, result_dir, velocity):
     return
   print("Looking at result data directory:", data_dir)
 
-  # T_applanix_lidar = dataset_odo.sequences[0].calib.T_applanix_lidar
-  # T_radar_lidar = dataset_odo.sequences[0].calib.T_radar_lidar
-  # T_applanix_radar = T_applanix_lidar @ get_inverse_tf(T_radar_lidar)
-  # T_robot_applanix = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
-  # T_robot_radar = T_robot_applanix @ T_applanix_radar
-
-
-  # T_robot_radar = np.array([[ 0.99923537, -0.03909824, 0, 0.64983432],
-  #                           [0.03909824, 0.99923537, 0., -0.01270855],
-  #                           [ 0, 0, 1, -2.24],
-  #                           [ 0, 0, 0, 1]])
-  T_axel_applanixxfwd = np.array([[1, 0, 0, 0.65],
-                            [0, 1, 0., 0.770],
-                            [ 0, 0, 1, -1.8],
+  T_axel_applanix = np.array([[0.0299955, 0.99955003, 0, 0.51],
+                            [-0.99955003, 0.0299955, 0., 0.0],
+                            [ 0, 0, 1, 1.45],
                             [ 0, 0, 0, 1]])
 
   T_applanix_lidar = dataset_odo.sequences[0].calib.T_applanix_lidar
   T_radar_lidar = dataset_odo.sequences[0].calib.T_radar_lidar
   T_applanix_radar = T_applanix_lidar @ get_inverse_tf(T_radar_lidar)
-  yfwd2xfwd = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
-  T_robot_radar = T_axel_applanixxfwd @ yfwd2xfwd @ T_applanix_radar
+  T_robot_radar = T_axel_applanix @ T_applanix_radar
 
   # get bag file
   bag_file = '{0}/{1}/{1}_0.db3'.format(osp.abspath(data_dir), "odometry_result")

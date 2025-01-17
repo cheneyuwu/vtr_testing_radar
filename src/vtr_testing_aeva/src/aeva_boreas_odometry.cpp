@@ -373,7 +373,7 @@ int main(int argc, char **argv) {
   int last_frame = 100000;
   bool aeriesII = config["/**"]["ros__parameters"]["aeriesII"].as<bool>();
   std::vector<double> temp = config["/**"]["ros__parameters"]["preprocessing"]["filtering"]["const_gyro_bias"].as<std::vector<double>>();
-  // std::vector<Eigen::Vector3d> const_gyro_bias;
+  std::vector<Eigen::Vector3d> const_gyro_bias;
   // for (size_t i = 0; i < temp.size(); i += 3) {
   //   const_gyro_bias.push_back(Eigen::Vector3d(temp[i], temp[i+1], temp[i+2]));
   // }
@@ -548,7 +548,7 @@ int main(int argc, char **argv) {
     double dt = 0;
     Eigen::MatrixXd points;
     if (aeriesII) {
-      std::tie(std::ignore, points) = load_new_lidar2(it->path().string(), start_time, end_time, start_name);
+      std::tie(std::ignore, points) = load_new_lidar(it->path().string(), start_time, end_time, start_name);
     } else {
       dt = 0.1; // aeries I gyro time sync ~0.1s off
       // Beam Order Path

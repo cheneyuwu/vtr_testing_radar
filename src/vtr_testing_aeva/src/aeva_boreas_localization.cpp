@@ -570,7 +570,7 @@ int main(int argc, char **argv) {
   }
 
   // to do: move this to config
-  std::vector<double> cov_arr; = {1.09504535e-04, 1.73659780e-04, 5.01201833e-05};
+  std::vector<double> cov_arr = {1.09504535e-04, 1.73659780e-04, 5.01201833e-05};
 
   std::vector<Eigen::Matrix3d> gyro_invcov;
   gyro_invcov.resize(1);

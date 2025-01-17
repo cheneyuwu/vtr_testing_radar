@@ -43,12 +43,18 @@ EdgeTransform load_T_robot_radar(const fs::path &path) {
   for (size_t row = 0; row < 4; row++)
     for (size_t col = 0; col < 4; col++) ifs2 >> T_radar_lidar_mat(row, col);
 
-  Eigen::Matrix4d yfwd2xfwd;
-  yfwd2xfwd << 0, 1, 0, 0, -1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1;
+  // Extrinsic from radar to rear axel
+  Eigen::Matrix4d T_axel_applanix;
+  // Want to estimate at rear axel, this transform has x forward, y right, z down
+  T_axel_applanix << 0.0299955, 0.99955003, 0, 0.51,
+                    -0.99955003, 0.0299955, 0, 0.0,
+                    0, 0, 1, 1.45,
+                    0, 0, 0, 1;
 
-  EdgeTransform T_robot_radar(Eigen::Matrix4d(yfwd2xfwd * T_applanix_lidar_mat *
+  EdgeTransform T_robot_radar(Eigen::Matrix4d(T_axel_applanix * T_applanix_lidar_mat *
                                               T_radar_lidar_mat.inverse()),
                               Eigen::Matrix<double, 6, 6>::Zero());
+
 #else
   (void)path;
   // robot frame == radar frame
@@ -143,7 +149,8 @@ int main(int argc, char **argv) {
 
   // List of radar data
   std::vector<fs::directory_entry> files;
-  for (const auto &dir_entry : fs::directory_iterator{odo_dir / "radar"})
+  const auto radar_dir_name = node->declare_parameter<std::string>("boreas.radar_dir_name", "radar");
+  for (const auto &dir_entry : fs::directory_iterator{odo_dir / radar_dir_name})
     if (!fs::is_directory(dir_entry)) files.push_back(dir_entry);
   std::sort(files.begin(), files.end());
   CLOG(WARNING, "test") << "Found " << files.size() << " radar data";

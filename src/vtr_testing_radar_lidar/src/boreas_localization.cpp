@@ -254,7 +254,7 @@ int main(int argc, char **argv) {
   std::string robot_frame = "robot";
   std::string radar_frame = "radar";
 
-  const auto T_robot_radar = load_T_robot_radar(odo_dir);
+  const auto T_robot_radar = load_T_robot_radar(loc_dir);
   const auto T_radar_robot = T_robot_radar.inverse();
   CLOG(WARNING, "test") << "Transform from " << robot_frame << " to "
                         << radar_frame << " has been set to" << T_radar_robot;

@@ -6,23 +6,21 @@ SEQUENCES=(
   'boreas-2021-03-09-14-23'
   'boreas-2021-06-29-18-53'
   'boreas-2021-09-08-21-00'
-  # 'boreas-2021-09-09-15-28'  # this is a st george run
-  # the following runs use a new radar, which does not work
-  # 'boreas-2021-10-05-15-35'
-  # 'boreas-2021-10-26-12-35'
-  # 'boreas-2021-11-06-18-55'
-  # 'boreas-2021-11-28-09-18'
+  'boreas-2021-10-05-15-35'
+  'boreas-2021-10-26-12-35'
+  'boreas-2021-11-06-18-55'
+  'boreas-2021-11-28-09-18'
 )
 
 REFERENCE='boreas-2020-11-26-13-58' # 'boreas-2021-09-02-11-42'
 
 # maximum number of jobs running in parallel
-GROUPSIZE=20
+GROUPSIZE=3
 
 # define the following environment variables VTRR=VTR RaDAR
 export VTRRROOT=${VTRROOT}/vtr_testing_radar # location of this repository CHANGE THIS!
-export VTRRDATA=${VTRDATA}/boreas/sequences  # dataset location (where the boreas-xxxxx folders at) CHANGE THIS!
-export VTRRRESULT=${VTRTEMP}/lidar/boreas    # result location MAYBE CHANGE THIS!
+# export VTRRDATA=${VTRDATA}/boreas/sequences  # dataset location (where the boreas-xxxxx folders at) CHANGE THIS!
+export VTRRRESULT=${VTRTEMP}/lidar    # result location MAYBE CHANGE THIS!
 mkdir -p ${VTRRRESULT}
 
 LOCALIZATION_SCRIPT="${VTRRROOT}/src/vtr_testing_lidar/script/test_localization.sh"

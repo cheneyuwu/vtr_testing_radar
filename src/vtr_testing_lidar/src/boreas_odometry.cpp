@@ -83,7 +83,8 @@ std::pair<int64_t, Eigen::MatrixXd> load_lidar(const std::string &path) {
 }
 
 EdgeTransform load_T_robot_lidar(const fs::path &path) {
-  // #if true
+
+#if true
   std::ifstream ifs(path / "calib" / "T_applanix_lidar.txt", std::ios::in);
 
   Eigen::Matrix4d T_applanix_lidar_mat;

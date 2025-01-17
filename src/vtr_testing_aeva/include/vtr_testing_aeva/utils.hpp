@@ -1,6 +1,6 @@
 #include <mutex>
 #include <random>
-
+#include <boost/algorithm/string.hpp>
 #include "rclcpp/rclcpp.hpp"
 
 #include "vtr_logging/logging.hpp"

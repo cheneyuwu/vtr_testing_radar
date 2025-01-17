@@ -190,7 +190,8 @@ std::pair<int64_t, Eigen::MatrixXd> load_new_lidar(const std::string &path, doub
   std::ifstream ifs(path, std::ios::binary);
   std::vector<char> buffer(std::istreambuf_iterator<char>(ifs), {});
   unsigned float_offset = 4; // float32
-  unsigned fields = 10;  // x, y, z, radial velocity, intensity, signal quality, reflectivity, time, beam_id, line_id
+  // 9 point cloud fields, use 10 because point_flags is 64 bits
+  unsigned fields = 10;  // x, y, z, radial velocity, intensity, signal quality, reflectivity, time, point_flags (beam_id, line_id, face_id)
   unsigned point_step = float_offset * fields;
   unsigned N = floor(buffer.size() / point_step);
 
@@ -233,13 +234,13 @@ std::pair<int64_t, Eigen::MatrixXd> load_new_lidar(const std::string &path, doub
     time_keep = (int64_t)(time_temp + t);
     time_temp = time_temp * 1e-9 + start_time;
     ++offset;
-    // Point Flags (64 bits)
+    // Point Flags (64 bit flag, only need first 32 bits)
     uint64_t point_flags = getFloatFromByteArray(buffer.data(), bufpos + offset * float_offset);
 
     // Extract flags
-    line_id = 63 - (point_flags >> 8) & 0xFF;
-    beam_id = (point_flags >> 16) & 0xF;
-    face_id = (point_flags >> 22) & 0xF;
+    line_id = 63 - (int)((point_flags >> 8) & 0xFF); // flip order
+    beam_id = (int)((point_flags >> 16) & 0xF);
+    face_id = (int)((point_flags >> 22) & 0xF);
 
     // Error checks
     if (line_id < 0 || line_id >= 64) continue;
@@ -341,7 +342,6 @@ Eigen::MatrixXd readGyroToEigenXd(const std::string &file_path, const int64_t& i
             y = std::stod(value);
         }
       } // end for row
-      // std::cout << timestamp_sec << ", " << r << ", " << p << ", " << y << std::endl;
       row_vec[0] = timestamp_sec;
       row_vec[1] = r;
       row_vec[2] = p;
@@ -419,9 +419,10 @@ int main(int argc, char **argv) {
   bool aeriesII = config["/**"]["ros__parameters"]["aeriesII"].as<bool>();
   std::vector<double> temp = config["/**"]["ros__parameters"]["preprocessing"]["filtering"]["const_gyro_bias"].as<std::vector<double>>();
   std::vector<Eigen::Vector3d> const_gyro_bias;
-  for (size_t i = 0; i < temp.size(); i += 3) {
-    const_gyro_bias.push_back(Eigen::Vector3d(temp[i], temp[i+1], temp[i+2]));
-  }
+  // temporarily commented out -- check if needed
+  // for (size_t i = 0; i < temp.size(); i += 3) {
+  //   const_gyro_bias.push_back(Eigen::Vector3d(temp[i], temp[i+1], temp[i+2]));
+  // }
 
   rclcpp::init(argc, argv);
   const std::string node_name = "boreas_localization_" + random_string(10);
@@ -554,22 +555,29 @@ int main(int argc, char **argv) {
   // initialize gyro
   std::vector<Eigen::MatrixXd> gyro_data_;
   gyro_data_.clear();
-  std::string gyro_path = odo_dir.string() + "/applanix/" + "aeva_imu.csv";
+  std::string gyro_path = loc_dir.string() + "/applanix/" + "aeva_imu.csv";
   if (aeriesII) {
     // load Aeries II boreas gyro
     gyro_data_.push_back(readGyroToEigenXd(gyro_path, initial_timestamp_micro_, "aevaII_boreas"));
     gyro_data_.back().rightCols<3>() *= -1.0; // flip reference frame
+
+    // compute gyro bias while vehicle is stationary
+    const_gyro_bias.push_back(gyro_data_.back().topRightCorner(200, 3).colwise().mean().transpose());
+    std::cout << "Gyro bias: " << const_gyro_bias.back().transpose() << std::endl;
   } else {
     // load Aeries I boreas gyro
     gyro_data_.push_back(readGyroToEigenXd(gyro_path, initial_timestamp_micro_, "aevaI_boreas"));
   }
 
+  // to do: move this to config
+  std::vector<double> cov_arr; = {1.09504535e-04, 1.73659780e-04, 5.01201833e-05};
+
   std::vector<Eigen::Matrix3d> gyro_invcov;
   gyro_invcov.resize(1);
   gyro_invcov[0] = Eigen::Matrix3d::Identity();
-  gyro_invcov[0](0,0) = 1.0/(1.45e-4);
-  gyro_invcov[0](1,1) = 1.0/(2.35e-4); 
-  gyro_invcov[0](2,2) = 1.0/(1.7e-5);                    
+  gyro_invcov[0](0,0) = 1.0/(cov_arr[0]);
+  gyro_invcov[0](1,1) = 1.0/(cov_arr[1]);
+  gyro_invcov[0](2,2) = 1.0/(cov_arr[2]);                   
 
   auto tf_sbc = std::make_shared<tf2_ros::StaticTransformBroadcaster>(node);
   auto msg =
@@ -602,10 +610,11 @@ int main(int argc, char **argv) {
     std::this_thread::sleep_for(
         std::chrono::milliseconds(test_control.delay()));
 
-    std::cout << "Frame " << frame << std::endl;
     const auto filename = getStampFromPath((it)->path().string());
     int64_t time_delta_micro = filename / 1000 - initial_timestamp_micro_;
     double start_time = static_cast<double>(time_delta_micro) / 1e6;
+
+    std::cout << "Frame " << frame << " with timestamp " << filename << std::endl;
 
     // Note: we peak into future data for the end timestamp for evaluation convenience. An online implementation
     // would need different logic, i.e., use the last timestamp of the pointcloud
@@ -618,14 +627,13 @@ int main(int argc, char **argv) {
     }
     int64_t start_name = filename;
     
-    double dt;
+    double dt = 0;
     Eigen::MatrixXd points;
     if (aeriesII) {
-      dt = 0.0;
       // load Aeries II boreas pointcloud
       std::tie(std::ignore, points) = load_new_lidar(it->path().string(), start_time, end_time, start_name);
     } else {
-      dt = 0.1;
+      dt = 0.1; // aeries I gyro time sync ~0.1s off
       // Beam Order Path
       std::string bo_path = config["/**"]["ros__parameters"]["bo_path"].as<std::string>();
       // load Aeries I boreas pointcloud

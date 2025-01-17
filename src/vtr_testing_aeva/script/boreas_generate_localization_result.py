@@ -54,7 +54,7 @@ class BagFileParser():
 def main(dataset_dir, result_dir, sensor_type):
   result_dir = osp.normpath(result_dir)
   odo_input = osp.basename(result_dir)
-  loc_inputs = [i for i in os.listdir(result_dir) if (i != odo_input and i.startswith("2024-"))]
+  loc_inputs = [i for i in os.listdir(result_dir) if (i != odo_input and i.startswith("20"))]
   loc_inputs.sort()
   print("Result Directory:", result_dir)
   print("Odometry Run:", odo_input)
@@ -155,6 +155,7 @@ def main(dataset_dir, result_dir, sensor_type):
       errors[i, :] = se3op.tran2vec(T_map_test_in_lidar @ T_test_map_in_lidar_gt).flatten()
 
     print(np.mean(np.abs(errors), axis=0))
+    errors[:, 3:] = np.rad2deg(errors[:, 3:])
     print(np.sqrt(np.mean(np.power(errors, 2), axis=0)))
 
     output_dir = osp.join(result_dir, "localization_result")

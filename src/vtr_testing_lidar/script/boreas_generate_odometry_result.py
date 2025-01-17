@@ -60,8 +60,9 @@ def main(dataset_dir, result_dir, velocity):
   print("Dataset Directory:", dataset_dir)
 
   try:
-    dataset_odo = BoreasDataset(osp.normpath(dataset_dir), [[odo_input_seq]])
-  except:
+    dataset_odo = BoreasDataset(osp.normpath(dataset_dir), [[odo_input_seq, 1598988139087912, 1598988198925188]])
+  except Exception as e:
+    print(e)
     print("Data set does not exist:", dataset_dir, odo_input_seq)
     return
 
@@ -75,22 +76,13 @@ def main(dataset_dir, result_dir, velocity):
 
   T_applanix_lidar = dataset_odo.sequences[0].calib.T_applanix_lidar
   T_robot_applanix = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
-  
+
   # TODO: robot frame should be at rear-axle of the vehicle, update this!
   # ## old way of getting robot applanix
   #T_radar_lidar = dataset_odo.sequences[0].calib.T_radar_lidar
   #T_applanix_radar = T_applanix_lidar @ get_inverse_tf(T_radar_lidar)
   #T_robot_applanix = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
   #T_robot_radar = T_robot_applanix @ T_applanix_radar
-
-  ## new way of getting robot applanix
-  #T_radar_lidar = dataset_odo.sequences[0].calib.T_radar_lidar
-  #T_radar_robot = np.array([[1, 0, 0, -0.26], [0, -1, 0, 0], [0, 0, -1, 0], [0, 0, 0, 1]])
-  #T_robot_lidar = get_inverse_tf(T_radar_robot) @ T_radar_lidar
-  # T_robot_lidar: [[ 0.68297386  0.73044281  0.          0.26      ]
-  #                 [-0.73044281  0.68297386  0.          0.        ]
-  #                 [ 0.          0.          1.         -0.21      ]
-  #                 [ 0.          0.          0.          1.        ]]
 
   #print("T_robot_lidar should be:\n", T_robot_lidar)
   #T_robot_applanix = T_robot_lidar @ get_inverse_tf(T_applanix_lidar)

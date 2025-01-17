@@ -51,7 +51,7 @@ class BagFileParser():
     return [(timestamp, deserialize_message(data, self.topic_msg_message[topic_name])) for timestamp, data in rows]
 
 
-def main(dataset_dir, result_dir):
+def main(dataset_dir, result_dir, velocity):
   result_dir = osp.normpath(result_dir)
   odo_input = osp.basename(result_dir)
   odo_input_seq = odo_input.split('.', 1)[0]
@@ -123,6 +123,42 @@ def main(dataset_dir, result_dir):
     writer.writerows(result)
     print("Written to file:", osp.join(output_dir, odo_input_seq + ".txt"))
 
+  if velocity:
+    bag_file = '{0}/{1}/{1}_0.db3'.format(osp.abspath(data_dir), "odometry_vel_result")
+    parser = BagFileParser(bag_file)
+    messages = parser.get_bag_messages("odometry_vel_result")
+
+    vel_results = []
+    for _, message in enumerate(messages):
+      w_v_r_robot = np.zeros((6))
+      w_v_r_robot[0] = message[1].linear.x
+      w_v_r_robot[1] = message[1].linear.y
+      w_v_r_robot[2] = message[1].linear.z
+      w_v_r_robot[3] = message[1].angular.x
+      w_v_r_robot[4] = message[1].angular.y
+      w_v_r_robot[5] = message[1].angular.z
+
+      w_r_v_radar = np.zeros((6))
+      w_r_v_radar[:3] = (- w_v_r_robot[:3].reshape(1, 3) @ T_robot_applanix[:3, :3]).flatten()
+      w_r_v_radar[3:] = (- w_v_r_robot[3:].reshape(1, 3) @ T_robot_applanix[:3, :3]).flatten()
+
+      timestamp = int(int(message[0]) / 1000)
+      vel_results.append([timestamp] + w_r_v_radar.flatten().tolist())
+
+    output_dir = osp.join(result_dir, "odometry_vel_result")
+    os.makedirs(output_dir, exist_ok=True)
+    with open(osp.join(output_dir, odo_input + ".txt"), "+w") as file:
+      writer = csv.writer(file, delimiter=' ')
+      writer.writerows(vel_results)
+      print("Written to file:", osp.join(output_dir, odo_input + ".txt"))
+
+    output_dir = osp.join(result_dir, "../odometry_vel_result")
+    os.makedirs(output_dir, exist_ok=True)
+    with open(osp.join(output_dir, odo_input + ".txt"), "+w") as file:
+      writer = csv.writer(file, delimiter=' ')
+      writer.writerows(vel_results)
+      print("Written to file:", osp.join(output_dir, odo_input + ".txt"))
+
 
 if __name__ == "__main__":
 
@@ -133,7 +169,9 @@ if __name__ == "__main__":
   # <rosbag name>/<rosbag name>_0.db3
   parser.add_argument('--dataset', default=os.getcwd(), type=str, help='path to boreas dataset (contains boreas-*)')
   parser.add_argument('--path', default=os.getcwd(), type=str, help='path to vtr folder (default: os.getcwd())')
+  parser.add_argument('--velocity', default=False, action='store_true', help='evaluate velocity (default: False)')
+
 
   args = parser.parse_args()
 
-  main(args.dataset, args.path)
+  main(args.dataset, args.path, args.velocity)

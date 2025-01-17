@@ -9,7 +9,7 @@ import sqlite3
 from rosidl_runtime_py.utilities import get_message
 from rclpy.serialization import deserialize_message
 
-from pylgmath import se3op
+from pylgmath import se3op, so3op
 from pyboreas import BoreasDataset
 
 
@@ -74,16 +74,15 @@ def main(dataset_dir, result_dir, velocity):
     return
   print("Looking at result data directory:", data_dir)
 
-  T_axel_applanixxfwd = np.array([[1, 0, 0, 0.65],
-                            [0, 1, 0., 0.770],
-                            [ 0, 0, 1, -1.8],
+  T_axel_applanix = np.array([[0.0299955, 0.99955003, 0, 0.51],
+                            [-0.99955003, 0.0299955, 0., 0.0],
+                            [ 0, 0, 1, 1.45],
                             [ 0, 0, 0, 1]])
+
   T_applanix_lidar = dataset_odo.sequences[0].calib.T_applanix_lidar
   T_radar_lidar = dataset_odo.sequences[0].calib.T_radar_lidar
   T_applanix_radar = T_applanix_lidar @ get_inverse_tf(T_radar_lidar)
-  yfwd2xfwd = np.array([[0, 1, 0, 0], [-1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
-  T_robot_radar = T_axel_applanixxfwd @ yfwd2xfwd @ T_applanix_radar
-
+  T_robot_radar = T_axel_applanix @ T_applanix_radar
 
   # get bag file
   bag_file = '{0}/{1}/{1}_0.db3'.format(osp.abspath(data_dir), "odometry_result")
@@ -98,6 +97,20 @@ def main(dataset_dir, result_dir, velocity):
     T_w_a = T_w_r @ T_robot_radar
     T_a_w_res = get_inverse_tf(T_w_a).flatten().tolist()[:12]
     result.append([timestamp] + T_a_w_res)
+
+  output_dir = osp.join(result_dir, "odometry_result")
+  os.makedirs(output_dir, exist_ok=True)
+  with open(osp.join(output_dir, odo_input + ".txt"), "+w") as file:
+    writer = csv.writer(file, delimiter=' ')
+    writer.writerows(result)
+    print("Written to file:", osp.join(output_dir, odo_input + ".txt"))
+
+  output_dir = osp.join(result_dir, "../odometry_result")
+  os.makedirs(output_dir, exist_ok=True)
+  with open(osp.join(output_dir, odo_input + ".txt"), "+w") as file:
+    writer = csv.writer(file, delimiter=' ')
+    writer.writerows(result)
+    print("Written to file:", osp.join(output_dir, odo_input + ".txt"))
 
   if velocity:
     bag_file = '{0}/{1}/{1}_0.db3'.format(osp.abspath(data_dir), "odometry_vel_result")
@@ -121,21 +134,6 @@ def main(dataset_dir, result_dir, velocity):
       timestamp = int(int(message[0]) / 1000)
       vel_results.append([timestamp] + w_r_v_radar.flatten().tolist())
 
-  output_dir = osp.join(result_dir, "odometry_result")
-  os.makedirs(output_dir, exist_ok=True)
-  with open(osp.join(output_dir, odo_input + ".txt"), "+w") as file:
-    writer = csv.writer(file, delimiter=' ')
-    writer.writerows(result)
-    print("Written to file:", osp.join(output_dir, odo_input + ".txt"))
-
-  output_dir = osp.join(result_dir, "../odometry_result")
-  os.makedirs(output_dir, exist_ok=True)
-  with open(osp.join(output_dir, odo_input + ".txt"), "+w") as file:
-    writer = csv.writer(file, delimiter=' ')
-    writer.writerows(result)
-    print("Written to file:", osp.join(output_dir, odo_input + ".txt"))
-
-  if velocity:
     output_dir = osp.join(result_dir, "odometry_vel_result")
     os.makedirs(output_dir, exist_ok=True)
     with open(osp.join(output_dir, odo_input + ".txt"), "+w") as file:
